@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">SGF Fälthandbok</string>
+
+    <string name="openNavDrawer">Navigation Drawer Open</string>
+    <string name="closeNavDrawer">Navigation Drawer Close</string>
+    <string name="innehall">Innehåll</string>
+    <string name="videor">Videor</string>
+    <string name="search">Search</string>
+</resources>
