@@ -6,4 +6,8 @@
     <string name="innehall">Innehåll</string>
     <string name="videor">Videor</string>
     <string name="search">Search</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="sok">Sök...</string>
 </resources>
