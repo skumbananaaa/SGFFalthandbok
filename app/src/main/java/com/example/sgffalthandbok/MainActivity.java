@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
     private ContentFragment     m_ContentFragment;
     private DocumentFragment    m_DocumentFragment;
-    private Fragment        m_SearchFragment;
+    private SearchFragment      m_SearchFragment;
 
     private byte[]          m_DocumentByteArr;
 
@@ -70,33 +70,9 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
         m_ContentFragment   = ContentFragment.newInstance(m_TableOfContents);
         m_DocumentFragment  = DocumentFragment.newInstance(m_DocumentByteArr);
-        m_SearchFragment    = SearchFragment.newInstance("Ja", "Fim");
+        m_SearchFragment    = SearchFragment.newInstance(m_DocumentTextPages);
 
         m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
-
-//        String searchString = "Skärborrkrona".toLowerCase();
-//        Locale swedishLocale = new Locale("sv", "SE");
-//
-//        ArrayList<Pair<Integer, Integer>> matchedCharactedIndices = new ArrayList<Pair<Integer, Integer>>();
-//
-//        for (int p = 0; p < m_DocumentTextPages.size(); p++)
-//        {
-//            String page = m_DocumentTextPages.get(p);
-//
-//            if (page.length() > 0)
-//            {
-//                StringCharacterIterator characterIterator = new StringCharacterIterator(page);
-//                StringSearch stringSearch = new StringSearch(searchString, characterIterator, swedishLocale);
-//
-//                int foundIndex = stringSearch.next();
-//
-//                while (foundIndex != StringSearch.DONE)
-//                {
-//                    matchedCharactedIndices.add(new Pair(p, foundIndex));
-//                    foundIndex = stringSearch.next();
-//                }
-//            }
-//        }
     }
 
     @Override
