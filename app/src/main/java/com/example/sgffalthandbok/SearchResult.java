@@ -13,17 +13,17 @@ public class SearchResult
         m_PageNumber    = pageNumber;
     }
 
-    public String getHeading()
+    public String GetHeading()
     {
         return m_Heading;
     }
 
-    public String getSampleText()
+    public String GetSampleText()
     {
         return m_SampleText;
     }
 
-    public int getPageNumber()
+    public int GetPageNumber()
     {
         return m_PageNumber;
     }

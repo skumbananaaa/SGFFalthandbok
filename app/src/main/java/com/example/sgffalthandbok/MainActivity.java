@@ -7,11 +7,15 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.button.MaterialButton;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
 import com.tom_roush.pdfbox.pdmodel.PDPage;
@@ -26,7 +30,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, ContentFragment.OnHeadingSelectedListener
+public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, ContentFragment.OnHeadingSelectedListener, SearchFragment.OnSearchResultSelectedListener
 {
     private static String   s_DocumentFilename = "Geobok 181026 Bok.pdf";
 
@@ -40,9 +44,10 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
     private byte[]          m_DocumentByteArr;
 
-    private ArrayList<String>                           m_DocumentTextPages;
-    private HashMap<CharSequence, Integer>              m_HeadingsToPageNumber;
-    private ArrayList<Pair<String, ArrayList<String>>>  m_TableOfContents;
+    private ArrayList<String>                                   m_DocumentTextPages;                //Contains all Pages in Text Format
+    private HashMap<String, Integer>                            m_HeadingsToPageNumber;             //Contains Key-Value Pairs of a Heading (with Separators removed) to a Page Number
+    private HashMap<Integer, ArrayList<Pair<Integer, String>>>  m_PageNumberToHeadings;             //Contains Key-Value Pairs of a Page Number which maps to a Sorted Array of CharIndex-Heading Pairs
+    private ArrayList<Pair<String, ArrayList<String>>>          m_TableOfContents;                  //Contains String-Array Pairs where the String is a Main Heading and the Array contains Subheadings
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -55,8 +60,9 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         m_BottomNavigationView = findViewById(R.id.bottomNavigation);
         m_BottomNavigationView.setOnNavigationItemSelectedListener(this);
 
-        m_DocumentTextPages = new ArrayList<String>(200);
-        m_HeadingsToPageNumber = new HashMap<CharSequence, Integer>();
+        m_DocumentTextPages = new ArrayList<>(200);
+        m_HeadingsToPageNumber = new HashMap<>();
+        m_PageNumberToHeadings = new HashMap<>();
 
         if (!LoadDocumentAsByteArray())
         {
@@ -70,7 +76,13 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
         m_ContentFragment   = ContentFragment.newInstance(m_TableOfContents);
         m_DocumentFragment  = DocumentFragment.newInstance(m_DocumentByteArr);
-        m_SearchFragment    = SearchFragment.newInstance(m_DocumentTextPages);
+        m_SearchFragment    = SearchFragment.newInstance(m_DocumentTextPages, m_PageNumberToHeadings);
+
+        FragmentTransaction fragmentTransaction = m_FragmentManager.beginTransaction();
+        fragmentTransaction.add(R.id.frameLayoutFragment, m_ContentFragment, "Content");
+        fragmentTransaction.add(R.id.frameLayoutFragment, m_DocumentFragment, "Document");
+        fragmentTransaction.add(R.id.frameLayoutFragment, m_SearchFragment, "Search");
+        fragmentTransaction.commit();
 
         m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
     }
@@ -83,21 +95,27 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             case R.id.contentNav:
             {
                 FragmentTransaction fragmentTransaction = m_FragmentManager.beginTransaction();
-                fragmentTransaction.replace(R.id.frameLayoutFragment, m_ContentFragment);
+                fragmentTransaction.show(m_ContentFragment);
+                fragmentTransaction.hide(m_DocumentFragment);
+                fragmentTransaction.hide(m_SearchFragment);
                 fragmentTransaction.commit();
                 return true;
             }
             case R.id.documentNav:
             {
                 FragmentTransaction fragmentTransaction = m_FragmentManager.beginTransaction();
-                fragmentTransaction.replace(R.id.frameLayoutFragment, m_DocumentFragment);
+                fragmentTransaction.hide(m_ContentFragment);
+                fragmentTransaction.show(m_DocumentFragment);
+                fragmentTransaction.hide(m_SearchFragment);
                 fragmentTransaction.commit();
                 return true;
             }
             case R.id.searchNav:
             {
                 FragmentTransaction fragmentTransaction = m_FragmentManager.beginTransaction();
-                fragmentTransaction.replace(R.id.frameLayoutFragment, m_SearchFragment);
+                fragmentTransaction.hide(m_ContentFragment);
+                fragmentTransaction.hide(m_DocumentFragment);
+                fragmentTransaction.show(m_SearchFragment);
                 fragmentTransaction.commit();
                 return true;
             }
@@ -105,8 +123,6 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                 return super.onOptionsItemSelected(item);
         }
     }
-
-
 
     @Override
     public void onPointerCaptureChanged(final boolean hasCapture)
@@ -181,34 +197,25 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             final PDDocumentCatalog documentCatalog = pdfDocument.getDocumentCatalog();
             final PDDocumentOutline tableOfContents = documentCatalog.getDocumentOutline();
             PDOutlineItem currentHeading = tableOfContents.getFirstChild();
-            PDPage currentPage = null;
             while (currentHeading != null)
             {
                 //Create new Subheadings Entry
                 ArrayList<String> subHeadings = new ArrayList<>();
-
-                String headingTitle = currentHeading.getTitle();
-
-                //Create new Heading Hashmap Entry
-                currentPage = currentHeading.findDestinationPage(pdfDocument);
-                m_HeadingsToPageNumber.put(headingTitle.replaceAll("\\s+", ""), documentCatalog.getPages().indexOf(currentPage));
+                AddHeadingData(currentHeading, pdfDocument, documentCatalog);
 
                 //Loop through Chapter Subheadings
                 PDOutlineItem currentSubHeading = currentHeading.getFirstChild();
                 while (currentSubHeading != null)
                 {
-                    //Create new Subheading Hashmap Entry
-                    currentPage = currentSubHeading.findDestinationPage(pdfDocument);
-                    String subHeadingTitle = currentSubHeading.getTitle();
-                    m_HeadingsToPageNumber.put(subHeadingTitle.replaceAll("\\s+", ""), documentCatalog.getPages().indexOf(currentPage));
+                    AddHeadingData(currentSubHeading, pdfDocument, documentCatalog);
 
                     //Create new Chapter Subheadings
-                    subHeadings.add(subHeadingTitle);
+                    subHeadings.add(currentSubHeading.getTitle());
 
                     currentSubHeading = currentSubHeading.getNextSibling();
                 }
 
-                m_TableOfContents.add(new Pair<>(headingTitle, subHeadings));
+                m_TableOfContents.add(new Pair<>(currentHeading.getTitle(), subHeadings));
                 currentHeading = currentHeading.getNextSibling();
             }
 
@@ -235,12 +242,36 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         return true;
     }
 
+    void AddHeadingData(PDOutlineItem currentHeading, PDDocument pdfDocument, PDDocumentCatalog documentCatalog) throws IOException
+    {
+        final String headingTitle       = currentHeading.getTitle();
+        final PDPage currentPage        = currentHeading.findDestinationPage(pdfDocument);
+        final int pageIndex             = documentCatalog.getPages().indexOf(currentPage);
+        final String pageText           = m_DocumentTextPages.get(pageIndex);
+
+        //Create new Headings to Page Number Entry
+        m_HeadingsToPageNumber.put(headingTitle.replaceAll("\\s+", ""), pageIndex);
+
+        //Create new Page Number to Headings Entry
+        ArrayList<Pair<Integer, String>> headingsPerCharNumber;
+        if (!m_PageNumberToHeadings.containsKey(pageIndex))
+        {
+            headingsPerCharNumber = new ArrayList<>();
+            m_PageNumberToHeadings.put(pageIndex, headingsPerCharNumber);
+        }
+        else
+        {
+            headingsPerCharNumber = m_PageNumberToHeadings.get(pageIndex);
+        }
+
+        headingsPerCharNumber.add(new Pair(pageText.indexOf(headingTitle), headingTitle));
+    }
+
     @Override
     public void OnHeadingSelected(final String heading)
     {
         try
         {
-
             int pageIndex = m_HeadingsToPageNumber.get(heading);
             m_DocumentFragment.JumpToPage(pageIndex);
             m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
@@ -248,6 +279,32 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         catch (NullPointerException e)
         {
             Log.e("SGF Fälthandbok", "Exception thrown while jumping to heading " + heading + "...", e);
+        }
+    }
+
+    @Override
+    public void OnSearchResultSelected(final SearchResult searchResult)
+    {
+        int pageNumber = searchResult.GetPageNumber();
+
+        try
+        {
+            InputMethodManager imm = (InputMethodManager)getSystemService(Activity.INPUT_METHOD_SERVICE);
+            //Find the currently focused view, so we can grab the correct window token from it.
+            View view = getCurrentFocus();
+            //If no view currently has focus, create a new one, just so we can grab a window token from it
+            if (view == null)
+            {
+                view = new View(this);
+            }
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+
+            m_DocumentFragment.JumpToPage(searchResult.GetPageNumber());
+            m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
+        }
+        catch (NullPointerException e)
+        {
+            Log.e("SGF Fälthandbok", "Exception thrown while jumping to page " + pageNumber + "...", e);
         }
     }
 }

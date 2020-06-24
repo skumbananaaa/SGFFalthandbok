@@ -1,5 +1,6 @@
 package com.example.sgffalthandbok;
 
+import android.graphics.Canvas;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -11,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.github.barteksc.pdfviewer.PDFView;
+import com.github.barteksc.pdfviewer.listener.OnDrawListener;
 import com.github.barteksc.pdfviewer.listener.OnLoadCompleteListener;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
 import com.shockwave.pdfium.PdfDocument;
@@ -49,7 +51,12 @@ public class DocumentFragment extends Fragment
 
     public void JumpToPage(int pageIndex)
     {
-        m_JumpToPage = pageIndex;
+        m_PDFView.jumpTo(pageIndex);
+    }
+
+    public void MoveRelativeTo(float x, float y)
+    {
+        m_PDFView.moveRelativeTo(x, y);
     }
 
     @Override
@@ -83,8 +90,8 @@ public class DocumentFragment extends Fragment
                     .enableSwipe(true) // allows to block changing pages using swipe
                     .swipeHorizontal(false)
                     .enableDoubletap(true)
-                    .defaultPage(m_JumpToPage)
-                    //.onDraw(onDrawListener) // allows to draw something on the current page, usually visible in the middle of the screen
+                    .defaultPage(0)
+                    //s.onDraw(this) // allows to draw something on the current page, usually visible in the middle of the screen
                     //.onDrawAll(onDrawListener) // allows to draw something on all pages, separately for every page. Called only for visible pages
                     //.onLoad(this) // called after document is loaded and starts to be rendered
                     //.onPageChange(onPageChangeListener)
@@ -94,7 +101,7 @@ public class DocumentFragment extends Fragment
                     //.onRender(onRenderListener) // called after document is rendered for the first time
                     //.onTap(onTapListener) // called on single tap, return true if handled, false to toggle scroll handle visibility
                     //.onLongPress(onLongPressListener)
-                    .enableAnnotationRendering(false) // render annotations (such as comments, colors or forms)
+                    .enableAnnotationRendering(true) // render annotations (such as comments, colors or forms)
                     .enableAntialiasing(true) // improve rendering a little bit on low-res screens
                     .spacing(0)// spacing between pages in dp. To define spacing color, set view backgrounds
                     .autoSpacing(false) // add dynamic spacing to fit each page on its own on the screen
