@@ -8,7 +8,10 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -25,6 +28,7 @@ import com.tom_roush.pdfbox.text.PDFTextStripper;
 import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -54,6 +58,14 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+//        File file = new File("file:///android_asset/", s_DocumentFilename);
+//        Uri uri = Uri.parse("file:///android_asset/" + s_DocumentFilename);
+//
+//        Intent intent = new Intent(this, DocumentActivity.class);
+//        intent.setAction(Intent.ACTION_VIEW);
+//        intent.setData(uri);
+//        startActivity(intent);
 
         m_FragmentManager   = getSupportFragmentManager();
 
@@ -283,7 +295,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     }
 
     @Override
-    public void OnSearchResultSelected(final SearchResult searchResult)
+    public void OnSearchResultSelected(final String searchString, final SearchResult searchResult)
     {
         int pageNumber = searchResult.GetPageNumber();
 
@@ -299,7 +311,8 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             }
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
 
-            m_DocumentFragment.JumpToPage(searchResult.GetPageNumber());
+            m_DocumentFragment.SetCurrentSearch(searchString);
+            m_DocumentFragment.JumpToPage(searchResult.GetPageNumber() - 1);
             m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
         }
         catch (NullPointerException e)

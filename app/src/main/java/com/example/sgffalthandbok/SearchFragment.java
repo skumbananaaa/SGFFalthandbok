@@ -46,9 +46,11 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
 
     private OnSearchResultSelectedListener   m_Listener;
 
+    private String  m_SearchString;
+
     public interface OnSearchResultSelectedListener
     {
-        public void OnSearchResultSelected(SearchResult searchResult);
+        public void OnSearchResultSelected(String searchString, SearchResult searchResult);
     }
 
     public SearchFragment()
@@ -121,7 +123,7 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
     {
         if (actionId == EditorInfo.IME_ACTION_SEARCH)
         {
-            String searchString = v.getText().toString().toLowerCase();
+            m_SearchString = v.getText().toString().toLowerCase();
 
             Locale swedishLocale = new Locale("sv", "SE");
             ArrayList<Pair<Integer, Integer>> matchedCharactedIndices = new ArrayList<Pair<Integer, Integer>>();
@@ -135,7 +137,7 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
                 {
                     //Todo: Store Lowercase Instead
                     StringCharacterIterator characterIterator = new StringCharacterIterator(page.toLowerCase(swedishLocale));
-                    StringSearch stringSearch = new StringSearch(searchString, characterIterator, swedishLocale);
+                    StringSearch stringSearch = new StringSearch(m_SearchString, characterIterator, swedishLocale);
 
                     int foundIndex  = stringSearch.next();
                     int skipHits    = 0;
@@ -145,9 +147,9 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
                         if (skipHits == 0)
                         {
                             String title        = GetTitle(pageIndex, foundIndex);
-                            String sampleText   = GetSampleText(page, searchString, foundIndex);
+                            String sampleText   = GetSampleText(page, m_SearchString, foundIndex);
 
-                            skipHits            = DuplicatesInSampleTextCount(sampleText, searchString);
+                            skipHits            = DuplicatesInSampleTextCount(sampleText, m_SearchString);
 
                             m_SearchResults.add(new SearchResult(title, sampleText, pageIndex));
                             matchedCharactedIndices.add(new Pair(pageIndex, foundIndex));
@@ -162,7 +164,7 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
                 }
             }
 
-            m_ListAdapter.SetSearchedText(searchString);
+            m_ListAdapter.SetSearchedText(m_SearchString);
             m_ListAdapter.notifyDataSetChanged();
 
             return true;
@@ -175,7 +177,7 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
     public void onItemClick(final AdapterView<?> parent, final View view, final int position, final long id)
     {
         SearchResult searchResult = (SearchResult) parent.getItemAtPosition(position);
-        m_Listener.OnSearchResultSelected(searchResult);
+        m_Listener.OnSearchResultSelected(m_SearchString, searchResult);
     }
 
     String GetTitle(int startPageIndex, int resultStart)
