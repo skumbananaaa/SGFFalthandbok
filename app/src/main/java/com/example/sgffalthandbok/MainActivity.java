@@ -3,22 +3,17 @@ package com.example.sgffalthandbok;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.util.Pair;
-import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.app.Activity;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.button.MaterialButton;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
 import com.tom_roush.pdfbox.pdmodel.PDPage;
@@ -28,11 +23,14 @@ import com.tom_roush.pdfbox.text.PDFTextStripper;
 import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, ContentFragment.OnHeadingSelectedListener, SearchFragment.OnSearchResultSelectedListener
 {
@@ -59,13 +57,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-//        File file = new File("file:///android_asset/", s_DocumentFilename);
-//        Uri uri = Uri.parse("file:///android_asset/" + s_DocumentFilename);
-//
-//        Intent intent = new Intent(this, DocumentActivity.class);
-//        intent.setAction(Intent.ACTION_VIEW);
-//        intent.setData(uri);
-//        startActivity(intent);
+        ThreadPool.Init();
 
         m_FragmentManager   = getSupportFragmentManager();
 
@@ -97,6 +89,27 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         fragmentTransaction.commit();
 
         m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
+    }
+
+    @Override
+    protected void onPostResume()
+    {
+        ThreadPool.Init();
+        super.onPostResume();
+    }
+
+    @Override
+    protected void onPause()
+    {
+        ThreadPool.Shutdown();
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop()
+    {
+        ThreadPool.Shutdown();
+        super.onStop();
     }
 
     @Override
@@ -181,7 +194,8 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         PDFBoxResourceLoader.init(getApplicationContext());
 
         String parsedText = null;
-        PDDocument pdfDocument = null;
+        final PDDocument pdfDocument;
+
         try
         {
             pdfDocument = PDDocument.load(m_DocumentByteArr);
@@ -194,6 +208,9 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
         try
         {
+
+
+            //Load Text
             PDFTextStripper pdfStripper = new PDFTextStripper();
 
             //Load Text
@@ -285,7 +302,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         try
         {
             int pageIndex = m_HeadingsToPageNumber.get(heading);
-            m_DocumentFragment.JumpToPage(pageIndex);
+            m_DocumentFragment.JumpFromTOC(pageIndex);
             m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
         }
         catch (NullPointerException e)
@@ -311,8 +328,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             }
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
 
-            m_DocumentFragment.SetCurrentSearch(searchString);
-            m_DocumentFragment.JumpToPage(searchResult.GetPageNumber() - 1);
+            m_DocumentFragment.JumpFromSearch(searchResult.GetPageNumber() - 1, searchString);
             m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
         }
         catch (NullPointerException e)

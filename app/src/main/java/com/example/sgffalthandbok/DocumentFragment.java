@@ -1,6 +1,8 @@
 package com.example.sgffalthandbok;
 
+import android.graphics.BlendMode;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Bundle;
@@ -20,12 +22,9 @@ import com.github.barteksc.pdfviewer.listener.OnLoadCompleteListener;
 import com.github.barteksc.pdfviewer.listener.OnPageChangeListener;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.text.PDFTextStripper;
-import com.tom_roush.pdfbox.text.TextPosition;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 
 /**
@@ -42,7 +41,7 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     private PDDocument  m_PDFDocument;
 
     private String                           m_CurrentSearch;
-    private ArrayList<DocumentHighlights>    m_HighlightsPerPage;
+    private ArrayList<PageHighlights>    m_HighlightsPerPage;
 
     private int         m_JumpToPage;
 
@@ -123,8 +122,6 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
                     .nightMode(false) // toggle night mode
                     .load();
         }
-
-
     }
 
     @Override
@@ -134,7 +131,7 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
 
         for (int i = 0; i < nbPages; i++)
         {
-            m_HighlightsPerPage.add(new DocumentHighlights(5));
+            m_HighlightsPerPage.add(new PageHighlights(m_PDFDocument, i + 1,5));
         }
     }
 
@@ -143,37 +140,51 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     {
         for (int pageIndex = Math.max(0, page - 1); pageIndex < Math.min(pageCount - 1, page + 1); pageIndex++)
         {
-            final DocumentHighlights documentHighlights = m_HighlightsPerPage.get(pageIndex);
+            final PageHighlights pageHighlights = m_HighlightsPerPage.get(pageIndex);
 
-            if (documentHighlights.GetSearchString() != m_CurrentSearch) //Dirty
-            {
-                documentHighlights.SetSearchString(m_CurrentSearch);
-                documentHighlights.ClearHighlights();
-
-                AddPageHighlights(pageIndex);
-            }
+            pageHighlights.Update(m_CurrentSearch, false);
         }
     }
 
     @Override
     public void onLayerDrawn(final Canvas canvas, final float pageWidth, final float pageHeight, final int displayedPage)
     {
-        final DocumentHighlights documentHighlights = m_HighlightsPerPage.get(displayedPage);
+        final PageHighlights pageHighlights = m_HighlightsPerPage.get(displayedPage);
 
-        for (RectF rect : documentHighlights.GetHighlights())
+        for (RectF rect : pageHighlights.GetHighlights())
         {
             Paint paint = new Paint();
-            paint.setARGB(70, 255, 0, 0);
+            paint.setColor(Color.YELLOW);
+            paint.setBlendMode(BlendMode.MULTIPLY);
             canvas.drawRect(rect, paint);
         }
     }
 
-    public void SetCurrentSearch(final String searchString)
+    public void JumpFromSearch(final int pageIndex, final String searchString)
     {
         m_CurrentSearch = searchString;
+        m_PDFView.jumpTo(pageIndex);
+
+        //Start Asynchronous Page Highlighting
+        ThreadPool.Execute(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                for (int p = 0; p < Math.max(0, pageIndex - 1); p++)
+                {
+                    m_HighlightsPerPage.get(p).Update(m_CurrentSearch, true);
+                }
+
+                for (int p = Math.min(m_PDFDocument.getNumberOfPages() - 1, pageIndex + 2); p < m_PDFDocument.getNumberOfPages(); p++)
+                {
+                    m_HighlightsPerPage.get(p).Update(m_CurrentSearch, true);
+                }
+            }
+        });
     }
 
-    public void JumpToPage(int pageIndex)
+    public void JumpFromTOC(final int pageIndex)
     {
         m_PDFView.jumpTo(pageIndex);
     }
@@ -181,59 +192,5 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     public void MoveRelativeTo(float x, float y)
     {
         m_PDFView.moveRelativeTo(x, y);
-    }
-
-    private void AddPageHighlights(int pageIndex)
-    {
-        try
-        {
-            PDFTextStripper pdfStripper = new PDFTextStripper()
-            {
-                @Override
-                protected void writeString(final String text, final List<TextPosition> textPositions) throws IOException
-                {
-                    DocumentHighlights documentHighlights = m_HighlightsPerPage.get(getCurrentPageNo() - 1);
-
-                    float posXInit      = 0;
-                    float posXEnd       = 0;
-                    float posYInit      = 0;
-                    float posYEnd       = 0;
-                    float width         = 0;
-                    float height        = 0;
-                    int searchStringLength = m_CurrentSearch.length();
-                    String lowerCaseText = text.toLowerCase();
-
-                    int searchIndex = lowerCaseText.indexOf(m_CurrentSearch);
-
-                    while (searchIndex != -1)
-                    {
-                        int searchStringEndIndex = searchIndex + searchStringLength - 1;
-                        TextPosition firstCharacter = textPositions.get(searchIndex);
-                        TextPosition lastCharacter = textPositions.get(searchStringEndIndex);
-
-                        posXInit = firstCharacter.getXDirAdj();
-                        posXEnd  = lastCharacter.getXDirAdj();
-                        posYInit = firstCharacter.getYDirAdj();
-                        posYEnd  = lastCharacter.getYDirAdj();
-                        width    = lastCharacter.getWidthDirAdj();
-                        height   = firstCharacter.getHeightDir();
-
-                        RectF rect = new RectF(posXInit, posYInit - height, posXEnd + width, posYEnd);
-                        documentHighlights.AddHighlight(rect);
-
-                        searchIndex = lowerCaseText.indexOf(m_CurrentSearch, searchIndex + searchStringLength);
-                    }
-                }
-            };
-
-            pdfStripper.setStartPage(pageIndex + 1);
-            pdfStripper.setEndPage(pageIndex + 1);
-            pdfStripper.getText(m_PDFDocument);
-        }
-        catch (IOException e)
-        {
-            Log.e("SGF Fälthandbok", "Exception thrown while stripping text...", e);
-            return;
-        }
     }
 }
