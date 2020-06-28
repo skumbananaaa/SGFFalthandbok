@@ -208,8 +208,8 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
             paint.setColor(Color.YELLOW);
             paint.setBlendMode(BlendMode.MULTIPLY);
             float zoom = m_PDFView.getZoom();
-            float mulX = zoom * pageWidth;
-            float mulY = zoom * pageHeight;
+            float mulX = pageWidth;
+            float mulY = pageHeight;
 
             float relativeX         = rect.left * mulX;
             float relativeY         = rect.top * mulY;
