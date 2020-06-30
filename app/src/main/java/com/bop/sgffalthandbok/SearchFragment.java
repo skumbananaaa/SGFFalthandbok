@@ -18,7 +18,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textview.MaterialTextView;
 
 import java.text.StringCharacterIterator;
 import java.util.ArrayList;
@@ -27,16 +26,13 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SearchFragment extends Fragment implements TextView.OnEditorActionListener, AdapterView.OnItemClickListener, View.OnKeyListener
+public class SearchFragment extends Fragment implements TextView.OnEditorActionListener, AdapterView.OnItemClickListener
 {
     public static final int    MIN_SEARCH_STRING_LENGTH        = 2;
 
-    private static final String ARG_DOCUMENT_TEXT_PAGES         = "documentTextPages";
-    private static final String ARG_PAGE_NUMBER_TO_HEADINGS     = "pageNumberToHeadings";
-
     private ArrayList<SearchResult>                             m_SearchResults;
     private ArrayList<String>                                   m_DocumentTextPages;
-    private HashMap<Integer, ArrayList<SerialiablePair<Integer, String>>>  m_PageNumberToHeadings;
+    private HashMap<Integer, ArrayList<SerializablePair<Integer, String>>>  m_PageNumberToHeadings;
 
     private SearchResultsAdapter        m_ListAdapter;
 
@@ -55,21 +51,6 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
         public void OnSearchResultSelected(String searchString, SearchResult searchResult);
     }
 
-    public SearchFragment()
-    {
-
-    }
-
-    public static SearchFragment newInstance(ArrayList<String> documentTextPages, HashMap<Integer, ArrayList<SerialiablePair<Integer, String>>> pageNumberToHeadings)
-    {
-        SearchFragment fragment = new SearchFragment();
-        Bundle args = new Bundle();
-        args.putSerializable(ARG_DOCUMENT_TEXT_PAGES, documentTextPages);
-        args.putSerializable(ARG_PAGE_NUMBER_TO_HEADINGS, pageNumberToHeadings);
-        fragment.setArguments(args);
-        return fragment;
-    }
-
     @Override
     public void onAttach(@NonNull final Context context)
     {
@@ -85,17 +66,6 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null)
-        {
-            m_DocumentTextPages     = (ArrayList<String>) getArguments().getSerializable(ARG_DOCUMENT_TEXT_PAGES);
-            m_PageNumberToHeadings  = (HashMap<Integer, ArrayList<SerialiablePair<Integer, String>>>) getArguments().getSerializable(ARG_PAGE_NUMBER_TO_HEADINGS);
-        }
-    }
-
-    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
     {
         return inflater.inflate(R.layout.fragment_search, container, false);
@@ -106,6 +76,9 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
     {
         super.onViewCreated(view, savedInstanceState);
 
+        m_DocumentTextPages     = ResourceManager.GetDocumentTextPages();
+        m_PageNumberToHeadings  = ResourceManager.GetPageNumberToHeadings();
+
         m_SearchString          = "";
 
         m_SearchField           = view.findViewById(R.id.searchField);
@@ -114,7 +87,6 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
 
         m_SearchField.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         m_SearchField.setOnEditorActionListener(this);
-        m_SearchField.setOnKeyListener(this);
 
         m_SearchResults = new ArrayList<>();
         m_ListAdapter = new SearchResultsAdapter(getContext(), m_SearchResults);
@@ -148,32 +120,15 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
     }
 
     @Override
-    public boolean onKey(final View v, final int keyCode, final KeyEvent event)
-    {
-        if (((TextView)v).getText().toString().length() > MIN_SEARCH_STRING_LENGTH)
-        {
-            m_ErrorTextView.setVisibility(View.INVISIBLE);
-        }
-        else
-        {
-            m_ErrorTextView.setVisibility(View.VISIBLE);
-        }
-
-        return true;
-    }
-
-    @Override
     public boolean onEditorAction(final TextView v, final int actionId, final KeyEvent event)
     {
         if (actionId == EditorInfo.IME_ACTION_SEARCH)
         {
             m_SearchString = v.getText().toString().toLowerCase();
             PerformSearch();
-
-            return true;
         }
 
-        return false;
+        return true;
     }
 
     @Override
@@ -186,7 +141,7 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
     private void PerformSearch()
     {
         Locale swedishLocale = new Locale("sv", "SE");
-        ArrayList<SerialiablePair<Integer, Integer>> matchedCharactedIndices = new ArrayList<SerialiablePair<Integer, Integer>>();
+        ArrayList<SerializablePair<Integer, Integer>> matchedCharactedIndices = new ArrayList<SerializablePair<Integer, Integer>>();
         m_SearchResults.clear();
 
         if (m_SearchString.length() > MIN_SEARCH_STRING_LENGTH)
@@ -216,7 +171,7 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
                             skipHits = DuplicatesInSampleTextCount(sampleText, m_SearchString);
 
                             m_SearchResults.add(new SearchResult(title, sampleText, pageIndex));
-                            matchedCharactedIndices.add(new SerialiablePair(pageIndex, foundIndex));
+                            matchedCharactedIndices.add(new SerializablePair(pageIndex, foundIndex));
                         }
                         else
                         {
@@ -243,11 +198,11 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
         {
             if (m_PageNumberToHeadings.containsKey(pageIndex))
             {
-                final ArrayList<SerialiablePair<Integer, String>> charIndexAndHeadings = m_PageNumberToHeadings.get(pageIndex);
+                final ArrayList<SerializablePair<Integer, String>> charIndexAndHeadings = m_PageNumberToHeadings.get(pageIndex);
 
                 for (int headingIndex = charIndexAndHeadings.size() - 1; headingIndex >= 0; headingIndex--)
                 {
-                    final SerialiablePair<Integer, String> charIndexAndHeading = charIndexAndHeadings.get(headingIndex);
+                    final SerializablePair<Integer, String> charIndexAndHeading = charIndexAndHeadings.get(headingIndex);
 
                     if (charIndexAndHeading.first < resultStart)
                         return charIndexAndHeading.second;

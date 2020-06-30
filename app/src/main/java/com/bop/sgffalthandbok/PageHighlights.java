@@ -3,7 +3,9 @@ package com.bop.sgffalthandbok;
 import android.graphics.RectF;
 import android.util.Log;
 
+import com.tom_roush.pdfbox.cos.COSDictionary;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
+import com.tom_roush.pdfbox.pdmodel.PDPage;
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 import com.tom_roush.pdfbox.text.TextPosition;
@@ -20,18 +22,28 @@ public class PageHighlights implements Runnable
     private int                 m_PageIndex;
     private String              m_SearchString;
     private boolean             m_IsDirty;
+    private boolean             m_Cancelled;
     private ArrayList<RectF>    m_Highlights;
 
     public PageHighlights(final PDDocument pdfDocument, final int pageIndex, final int initialCapacity)
     {
-        m_PDFDocument   = pdfDocument;
+        m_PDFDocument   = ResourceManager.GetPDFDocument(pageIndex);
         m_PageIndex     = pageIndex;
         m_Highlights    = new ArrayList<>(initialCapacity);
+        m_Cancelled     = false;
+    }
+
+    public boolean IsDirty()
+    {
+        synchronized (m_Highlights)
+        {
+            return m_IsDirty;
+        }
     }
 
     public ArrayList<RectF> GetHighlights()
     {
-        synchronized (this)
+        synchronized (m_Highlights)
         {
             return m_Highlights;
         }
@@ -39,19 +51,34 @@ public class PageHighlights implements Runnable
 
     public void Update(String newSearchString, boolean async)
     {
-        if (m_SearchString != newSearchString)
+        synchronized (this)
         {
-            m_IsDirty = true;
-            m_SearchString = newSearchString;
-        }
+            boolean alreadyWasDirty = m_IsDirty;
 
-        if (async)
-        {
-            ThreadPool.Execute(this);
+            if (m_SearchString != newSearchString)
+            {
+                m_IsDirty       = true;
+                m_SearchString  = newSearchString;
+                m_Cancelled     = false;
+            }
+
+            //If it was dirty then an update is already scheduled -> updating m_SearchString is enough
+            if (async && !alreadyWasDirty)
+            {
+                ThreadPool.Execute(this);
+            }
+            else
+            {
+                InternalUpdate();
+            }
         }
-        else
+    }
+
+    public void CancelUpdate()
+    {
+        synchronized (this)
         {
-            InternalUpdate();
+            m_Cancelled = true;
         }
     }
 
@@ -66,10 +93,20 @@ public class PageHighlights implements Runnable
     {
         synchronized (this)
         {
+            if (m_Cancelled)
+            {
+                m_Cancelled = false;
+                return;
+            }
+
             if (m_IsDirty)
             {
-                m_Highlights.clear();
-                m_IsDirty = false;
+                synchronized (m_Highlights)
+                {
+                    m_Highlights.clear();
+                }
+
+                final ArrayList<RectF> newHighlights = new ArrayList<>();
 
                 try
                 {
@@ -107,20 +144,28 @@ public class PageHighlights implements Runnable
                                 height = firstCharacter.getHeightDir();
 
                                 RectF rect = new RectF(posXInit / pageWidth, (posYInit - height) / pageHeight, (posXEnd + width) / pageWidth, posYEnd / pageHeight);
-                                m_Highlights.add(rect);
+                                newHighlights.add(rect);
 
                                 searchIndex = lowerCaseText.indexOf(m_SearchString, searchIndex + searchStringLength);
                             }
                         }
                     };
 
-                    pdfStripper.setStartPage(m_PageIndex);
-                    pdfStripper.setEndPage(m_PageIndex);
+//                    pdfStripper.setStartPage(m_PageIndex + 1);
+//                    pdfStripper.setEndPage(m_PageIndex + 1);
 
                     pdfStripper.getText(m_PDFDocument);
-                } catch (IOException e)
+                }
+                catch (IOException e)
                 {
-                    Log.e("SGF Fälthandbok", "Failed to Strip Text...");
+                    e.printStackTrace();
+                    Log.e("SGF Fälthandbok", "Failed to Strip Text on page " + m_PageIndex + "...");
+                }
+
+                synchronized (m_Highlights)
+                {
+                    m_Highlights = newHighlights;
+                    m_IsDirty = false;
                 }
             }
         }

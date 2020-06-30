@@ -25,16 +25,20 @@ import com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOut
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, ContentFragment.OnHeadingSelectedListener, SearchFragment.OnSearchResultSelectedListener, YouTubePlayer.OnInitializedListener
 {
-    private static String   YOUTUBE_API_KEY     = "AIzaSyAmJzQA4wHYuiONkLKF-W89ZZRDRF9nqlY";
-    private static String   DOCUMENT_FILENAME   = "Geobok 181026 Bok.pdf";
+    private static String   YOUTUBE_API_KEY             = "AIzaSyAmJzQA4wHYuiONkLKF-W89ZZRDRF9nqlY";
 
     private FragmentManager         m_FragmentManager;
     private BottomNavigationView    m_BottomNavigationView;
@@ -46,13 +50,6 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     private YouTubePlayerFragmentX  m_VideoFragment;
     private DocumentFragment        m_DocumentFragment;
     private SearchFragment          m_SearchFragment;
-
-    private byte[]                  m_DocumentByteArr;
-
-    private ArrayList<String>                                               m_DocumentTextPages;                //Contains all Pages in Text Format
-    private HashMap<String, Integer>                                        m_HeadingsToPageNumber;             //Contains Key-Value Pairs of a Heading (with Separators removed) to a Page Number
-    private HashMap<Integer, ArrayList<SerialiablePair<Integer, String>>>   m_PageNumberToHeadings;             //Contains Key-Value Pairs of a Page Number which maps to a Sorted Array of CharIndex-Heading Pairs
-    private ArrayList<SerialiablePair<String, ArrayList<String>>>           m_TableOfContents;                  //Contains String-Array Pairs where the String is a Main Heading and the Array contains Subheadings
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -67,19 +64,11 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         m_BottomNavigationView = findViewById(R.id.bottomNavigation);
         m_BottomNavigationView.setOnNavigationItemSelectedListener(this);
 
-        if (!LoadDocumentAsByteArray())
-        {
-            Log.e("SGF Fälthandbok", "LoadDocumentAsByteArray Failed");
-        }
+        ResourceManager.Initialize(savedInstanceState, getApplicationContext(), getAssets());
 
         if (savedInstanceState != null)
         {
             m_DocumentIsCurrent = savedInstanceState.getBoolean("m_DocumentIsCurrent");
-
-            m_DocumentTextPages         = (ArrayList<String>) savedInstanceState.getSerializable("m_DocumentTextPages");
-            m_HeadingsToPageNumber      = (HashMap<String, Integer>) savedInstanceState.getSerializable("m_HeadingsToPageNumber");
-            m_PageNumberToHeadings      = (HashMap<Integer, ArrayList<SerialiablePair<Integer, String>>>) savedInstanceState.getSerializable("m_PageNumberToHeadings");
-            m_TableOfContents           = (ArrayList<SerialiablePair<String, ArrayList<String>>>) savedInstanceState.getSerializable("m_TableOfContents");
 
             m_ContentFragment   = (ContentFragment) m_FragmentManager.findFragmentByTag("Content");
             m_VideoFragment     = (YouTubePlayerFragmentX) m_FragmentManager.findFragmentByTag("Video");
@@ -94,19 +83,10 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         {
             m_DocumentIsCurrent = true;
 
-            m_DocumentTextPages = new ArrayList<>(200);
-            m_HeadingsToPageNumber = new HashMap<>();
-            m_PageNumberToHeadings = new HashMap<>();
-
-            if (!LoadDocumentSearchablePages())
-            {
-                Log.e("SGF Fälthandbok", "LoadDocumentSearchablePages Failed");
-            }
-
-            m_ContentFragment   = ContentFragment.newInstance(m_TableOfContents);
-            m_VideoFragment     = YouTubePlayerFragmentX.newInstance();
-            m_DocumentFragment  = DocumentFragment.newInstance(m_DocumentByteArr);
-            m_SearchFragment    = SearchFragment.newInstance(m_DocumentTextPages, m_PageNumberToHeadings);
+            m_ContentFragment   = new ContentFragment();
+            m_VideoFragment     = new YouTubePlayerFragmentX();
+            m_DocumentFragment  = new DocumentFragment();
+            m_SearchFragment    = new SearchFragment();
 
             m_VideoFragment.initialize(YOUTUBE_API_KEY, this);
 
@@ -145,16 +125,12 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     @Override
     protected void onSaveInstanceState(@NonNull final Bundle outState)
     {
-        outState.putBoolean("m_DocumentIsCurrent", m_DocumentIsCurrent);
-
-        outState.putSerializable("m_DocumentTextPages", m_DocumentTextPages);
-        outState.putSerializable("m_HeadingsToPageNumber", m_HeadingsToPageNumber);
-        outState.putSerializable("m_PageNumberToHeadings", m_PageNumberToHeadings);
-        outState.putSerializable("m_TableOfContents", m_TableOfContents);
-
-        outState.putInt("SELECTED_NAV_ITEM",  m_BottomNavigationView.getSelectedItemId());
-
         super.onSaveInstanceState(outState);
+
+        ResourceManager.Destroy(outState);
+
+        outState.putBoolean("m_DocumentIsCurrent", m_DocumentIsCurrent);
+        outState.putInt("SELECTED_NAV_ITEM",  m_BottomNavigationView.getSelectedItemId());
     }
 
     @Override
@@ -213,145 +189,6 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
     }
 
-    boolean LoadDocumentAsByteArray()
-    {
-        InputStream inputStream = null;
-        try
-        {
-            inputStream = getAssets().open(DOCUMENT_FILENAME);
-        }
-        catch (IOException e)
-        {
-            Log.e("SGF Fälthandbok", "Exception thrown while opening document...", e);
-            return false;
-        }
-
-        byte[] buffer = new byte[8192];
-        int bytesRead;
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        while (true)
-        {
-            try
-            {
-                if (((bytesRead = inputStream.read(buffer)) == -1)) break;
-                output.write(buffer, 0, bytesRead);
-            }
-            catch (IOException e)
-            {
-                Log.e("SGF Fälthandbok", "Exception thrown while converting document to byte array...", e);
-                return false;
-            }
-        }
-
-        m_DocumentByteArr = output.toByteArray();
-        return true;
-    }
-
-    boolean LoadDocumentSearchablePages()
-    {
-        PDFBoxResourceLoader.init(getApplicationContext());
-
-        String parsedText = null;
-        final PDDocument pdfDocument;
-
-        try
-        {
-            pdfDocument = PDDocument.load(m_DocumentByteArr);
-        }
-        catch(IOException e)
-        {
-            Log.e("SGF Fälthandbok", "Exception thrown while loading document to strip...", e);
-            return false;
-        }
-
-        try
-        {
-            //Load Text
-            PDFTextStripper pdfStripper = new PDFTextStripper();
-
-            //Load Text
-            for (int p = 0; p < pdfDocument.getNumberOfPages(); p++)
-            {
-                pdfStripper.setStartPage(p);
-                pdfStripper.setEndPage(p);
-                m_DocumentTextPages.add(pdfStripper.getText(pdfDocument).toLowerCase());
-            }
-
-            //Load ToC
-            m_TableOfContents = new ArrayList<>(15);
-            final PDDocumentCatalog documentCatalog = pdfDocument.getDocumentCatalog();
-            final PDDocumentOutline tableOfContents = documentCatalog.getDocumentOutline();
-            PDOutlineItem currentHeading = tableOfContents.getFirstChild();
-            while (currentHeading != null)
-            {
-                //Create new Subheadings Entry
-                ArrayList<String> subHeadings = new ArrayList<>();
-                AddHeadingData(currentHeading, pdfDocument, documentCatalog);
-
-                //Loop through Chapter Subheadings
-                PDOutlineItem currentSubHeading = currentHeading.getFirstChild();
-                while (currentSubHeading != null)
-                {
-                    AddHeadingData(currentSubHeading, pdfDocument, documentCatalog);
-
-                    //Create new Chapter Subheadings
-                    subHeadings.add(currentSubHeading.getTitle());
-
-                    currentSubHeading = currentSubHeading.getNextSibling();
-                }
-
-                m_TableOfContents.add(new SerialiablePair<>(currentHeading.getTitle(), subHeadings));
-                currentHeading = currentHeading.getNextSibling();
-            }
-
-
-        }
-        catch (IOException e)
-        {
-            Log.e("SGF Fälthandbok", "Exception thrown while stripping text...", e);
-            return false;
-        }
-        finally
-        {
-            try
-            {
-                if (pdfDocument != null) pdfDocument.close();
-            }
-            catch (IOException e)
-            {
-                Log.e("SGF Fälthandbok", "Exception thrown while closing document...", e);
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    void AddHeadingData(PDOutlineItem currentHeading, PDDocument pdfDocument, PDDocumentCatalog documentCatalog) throws IOException
-    {
-        final String headingTitle       = currentHeading.getTitle();
-        final PDPage currentPage        = currentHeading.findDestinationPage(pdfDocument);
-        final int pageIndex             = documentCatalog.getPages().indexOf(currentPage);
-        final String pageText           = m_DocumentTextPages.get(pageIndex);
-
-        //Create new Headings to Page Number Entry
-        m_HeadingsToPageNumber.put(headingTitle.replaceAll("\\s+", ""), pageIndex);
-
-        //Create new Page Number to Headings Entry
-        ArrayList<SerialiablePair<Integer, String>> headingsPerCharNumber;
-        if (!m_PageNumberToHeadings.containsKey(pageIndex))
-        {
-            headingsPerCharNumber = new ArrayList<>();
-            m_PageNumberToHeadings.put(pageIndex, headingsPerCharNumber);
-        }
-        else
-        {
-            headingsPerCharNumber = m_PageNumberToHeadings.get(pageIndex);
-        }
-
-        headingsPerCharNumber.add(new SerialiablePair(pageText.indexOf(headingTitle), headingTitle));
-    }
-
     @Override
     public void OnHeadingSelected(final String heading)
     {
@@ -364,8 +201,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         {
             try
             {
-                int pageIndex = m_HeadingsToPageNumber.get(heading);
-                m_DocumentFragment.JumpFromTOC(pageIndex);
+                m_DocumentFragment.JumpFromTOC(heading);
                 m_DocumentIsCurrent = true;
                 m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
             }
@@ -393,7 +229,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             }
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
 
-            m_DocumentFragment.JumpFromSearch(searchResult.GetPageNumber() - 1, searchString);
+            m_DocumentFragment.JumpFromSearch(searchResult.GetPageNumber(), searchString);
             m_DocumentIsCurrent = true;
             m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
         }

@@ -10,7 +10,7 @@ import java.util.*;
  * @param <B> the second element type
  *
  */
-public class SerialiablePair<A, B> implements Serializable
+public class SerializablePair<A, B> implements Serializable
 {
     /**
      * The first pair element
@@ -28,7 +28,7 @@ public class SerialiablePair<A, B> implements Serializable
      * @param a the first element
      * @param b the second element
      */
-    public SerialiablePair(A a, B b)
+    public SerializablePair(A a, B b)
     {
         this.first = a;
         this.second = b;
@@ -106,10 +106,10 @@ public class SerialiablePair<A, B> implements Serializable
     {
         if (this == o)
             return true;
-        else if (!(o instanceof SerialiablePair))
+        else if (!(o instanceof SerializablePair))
             return false;
 
-        @SuppressWarnings("unchecked") SerialiablePair<A, B> other = (SerialiablePair<A, B>) o;
+        @SuppressWarnings("unchecked") SerializablePair<A, B> other = (SerializablePair<A, B>) o;
         return Objects.equals(first, other.first) && Objects.equals(second, other.second);
     }
 
@@ -128,9 +128,9 @@ public class SerialiablePair<A, B> implements Serializable
      * @param <B> the second element type
      * @return new pair
      */
-    public static <A, B> SerialiablePair<A, B> of(A a, B b)
+    public static <A, B> SerializablePair<A, B> of(A a, B b)
     {
-        return new SerialiablePair<>(a, b);
+        return new SerializablePair<>(a, b);
     }
 
 }

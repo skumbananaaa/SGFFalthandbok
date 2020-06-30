@@ -10,4 +10,8 @@
     <string name="dokument">Dokument</string>
     <string name="sok">Sök</string>
     <string name="f_r_kort_s_ktext">För kort söktext...</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="clearsearch">clearSearch</string>
 </resources>

@@ -18,17 +18,9 @@ import com.google.android.material.textview.MaterialTextView;
 
 import java.util.ArrayList;
 
-
-/**
- * A simple {@link Fragment} subclass.
- * Use the {@link ContentFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
 public class ContentFragment extends Fragment implements AdapterView.OnItemClickListener
 {
-    private static final String ARG_TABLE_OF_CONTENTS = "tableOfContents";
-
-    private ArrayList<SerialiablePair<String, ArrayList<String>>>  m_TableOfContents;
+    private ArrayList<SerializablePair<String, ArrayList<String>>>  m_TableOfContents;
 
     private ListView                m_ListView;
     private ArrayAdapter<String>    m_ListAdapter;
@@ -39,15 +31,6 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
     public interface OnHeadingSelectedListener
     {
         public void OnHeadingSelected(String heading);
-    }
-
-    public static ContentFragment newInstance(ArrayList<SerialiablePair<String, ArrayList<String>>>  tableOfContents)
-    {
-        ContentFragment fragment = new ContentFragment();
-        Bundle args = new Bundle();
-        args.putSerializable(ARG_TABLE_OF_CONTENTS, tableOfContents);
-        fragment.setArguments(args);
-        return fragment;
     }
 
     @Override
@@ -65,16 +48,6 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null)
-        {
-            m_TableOfContents = (ArrayList<SerialiablePair<String, ArrayList<String>>>)getArguments().getSerializable(ARG_TABLE_OF_CONTENTS);
-        }
-    }
-
-    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
     {
@@ -87,13 +60,15 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
     {
         super.onViewCreated(view, savedInstanceState);
 
+        m_TableOfContents = ResourceManager.GetTableOfContents();
+
         m_Headings = new ArrayList<>();
 
         m_ListView = view.findViewById(R.id.contentList);
         m_ListAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, m_Headings);
         m_ListView.setAdapter(m_ListAdapter);
 
-        for (SerialiablePair<String, ArrayList<String>> chapter : m_TableOfContents)
+        for (SerializablePair<String, ArrayList<String>> chapter : m_TableOfContents)
         {
             m_ListAdapter.add(chapter.first);
 
