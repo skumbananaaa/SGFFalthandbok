@@ -23,12 +23,14 @@ public class SearchResultsAdapter extends ArrayAdapter<SearchResult>
     private Context                 m_Context;
     private List<SearchResult>      m_SearchResultsList;
     private String                  m_SearchedText;
+    private int                     m_HighlightColor;
 
     public SearchResultsAdapter(@NonNull Context context, ArrayList<SearchResult> list)
     {
         super(context, 0 , list);
         m_Context           = context;
         m_SearchResultsList = list;
+        m_HighlightColor    = context.getColor(R.color.colorAccentLight);
     }
 
     void SetSearchedText(String text)
@@ -71,7 +73,7 @@ public class SearchResultsAdapter extends ArrayAdapter<SearchResult>
                 break;
             else
             {
-                wordToSpan.setSpan(new BackgroundColorSpan(Color.YELLOW), ofe, ofe + m_SearchedText.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                wordToSpan.setSpan(new BackgroundColorSpan(m_HighlightColor), ofe, ofe + m_SearchedText.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                 tv.setText(wordToSpan, TextView.BufferType.SPANNABLE);
             }
         }

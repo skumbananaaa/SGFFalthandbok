@@ -28,7 +28,7 @@ import java.util.HashMap;
 
 public class ResourceManager
 {
-    private static int      NUMBER_OF_PAGES             = 34;
+    private static int      NUMBER_OF_PAGES             = 104;
     private static String   PAGE_FILENAME               = "Geobok 181026 Pages/Geobok 181026 Pages_";
     private static String   DOCUMENT_FILENAME           = "Geobok 181026 Bok.pdf";
     private static String   DOCUMENT_JSON_FILENAME      = "Geobok 181026 Bok.json";
@@ -150,7 +150,7 @@ public class ResourceManager
             InputStream inputStream = null;
             try
             {
-                inputStream = assetManager.open(PAGE_FILENAME + String.format("%02d", pageIndex) + ".pdf");
+                inputStream = assetManager.open(PAGE_FILENAME + String.format("%02d", pageIndex + 1) + ".pdf");
             }
             catch (IOException e)
             {
@@ -204,7 +204,7 @@ public class ResourceManager
 
         try
         {
-            for (int pageIndex = 0; pageIndex < 34; pageIndex++)
+            for (int pageIndex = 0; pageIndex < NUMBER_OF_PAGES; pageIndex++)
             {
                 s_PDFDocumentPerPage.add(PDDocument.load(s_DocumentPagesByteArr.get(pageIndex)));
             }

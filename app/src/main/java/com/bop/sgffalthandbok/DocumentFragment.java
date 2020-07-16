@@ -63,7 +63,7 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
         m_HeadingsToPageNumber  = ResourceManager.GetHeadingsToPageNumber();
 
         m_HighlightPaint = new Paint();
-        m_HighlightPaint.setColor(Color.YELLOW);
+        m_HighlightPaint.setColor(getContext().getColor(R.color.colorAccentLight));
         m_HighlightPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.MULTIPLY));
 
         final int defaultPage;
