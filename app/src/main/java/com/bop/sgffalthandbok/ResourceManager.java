@@ -319,6 +319,8 @@ public class ResourceManager extends AndroidViewModel
             }
         }
 
+        m_PageHighlights.get(pageIndex).observe(owner, observer);
+
         if (m_PageHighlightsWorkspace == null)
         {
             m_PageHighlightsWorkspace = new ArrayList<>(m_PDFDocument.getNumberOfPages());
@@ -329,12 +331,12 @@ public class ResourceManager extends AndroidViewModel
             }
         }
 
+        m_PageHighlights.get(pageIndex).postValue(new Pair(pageIndex, m_PageHighlightsWorkspace.get(pageIndex)));
+
         if (m_PageHighlightLoaderService == null)
         {
             m_PageHighlightLoaderService = Executors.newSingleThreadExecutor();
         }
-
-        m_PageHighlights.get(pageIndex).observe(owner, observer);
     }
 
     public void UpdateBookHighlights(final String highlightString, final int currentPage)
