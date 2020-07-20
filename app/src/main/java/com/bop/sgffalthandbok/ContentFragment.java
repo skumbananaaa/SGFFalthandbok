@@ -6,6 +6,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -60,7 +61,9 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
     {
         super.onViewCreated(view, savedInstanceState);
 
-        m_TableOfContents = ResourceManager.GetTableOfContents();
+        ResourceManager resourceManager = new ViewModelProvider(requireActivity()).get(ResourceManager.class);
+
+        m_TableOfContents = resourceManager.GetTableOfContents();
 
         m_Headings = new ArrayList<>();
 

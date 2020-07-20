@@ -1,18 +1,25 @@
 package com.bop.sgffalthandbok;
 
-import android.content.Context;
+import android.app.Application;
 import android.content.res.AssetManager;
-import android.os.Bundle;
+import android.graphics.RectF;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
 import com.tom_roush.pdfbox.pdmodel.PDPage;
+import com.tom_roush.pdfbox.pdmodel.common.PDRectangle;
 import com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
+import com.tom_roush.pdfbox.text.PDFTextStripper;
+import com.tom_roush.pdfbox.text.TextPosition;
 import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 import org.json.JSONArray;
@@ -25,87 +32,75 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class ResourceManager
+public class ResourceManager extends AndroidViewModel
 {
-    private static int      NUMBER_OF_PAGES             = 104;
-    private static String   PAGE_FILENAME               = "Geobok 181026 Pages/Geobok 181026 Pages_";
     private static String   DOCUMENT_FILENAME           = "Geobok 181026 Bok.pdf";
     private static String   DOCUMENT_JSON_FILENAME      = "Geobok 181026 Bok.json";
 
-    private static boolean s_Initialized                = false;
+    private byte[]                                                           m_DocumentByteArr;                   //The entire PDF as a byte array
+    private PDDocument                                                       m_PDFDocument;
+    private ArrayList<String>                                                m_DocumentTextPages;                 //Contains all Pages in Text Format
+    private HashMap<String, Integer>                                         m_HeadingsToPageNumber;              //Contains Key-Value Pairs of a Heading (with Separators removed) to a Page Number
+    private HashMap<Integer, ArrayList<SerializablePair<Integer, String>>>   m_PageNumberToHeadings;              //Contains Key-Value Pairs of a Page Number which maps to a Sorted Array of CharIndex-Heading Pairs
+    private ArrayList<SerializablePair<String, ArrayList<String>>>           m_TableOfContents;                   //Contains String-Array Pairs where the String is a Main Heading and the Array contains Subheadings
 
-    private static ArrayList<byte[]>                                               s_DocumentPagesByteArr;              //The entire PDF as a byte arrays per page
-    private static byte[]                                                          s_DocumentByteArr;                   //The entire PDF as a byte array
-    private static ArrayList<PDDocument>                                           s_PDFDocumentPerPage;
-    private static PDDocument                                                      s_PDFDocument;
-    private static ArrayList<String>                                               s_DocumentTextPages;                 //Contains all Pages in Text Format
-    private static HashMap<String, Integer>                                        s_HeadingsToPageNumber;              //Contains Key-Value Pairs of a Heading (with Separators removed) to a Page Number
-    private static HashMap<Integer, ArrayList<SerializablePair<Integer, String>>>  s_PageNumberToHeadings;              //Contains Key-Value Pairs of a Page Number which maps to a Sorted Array of CharIndex-Heading Pairs
-    private static ArrayList<SerializablePair<String, ArrayList<String>>>          s_TableOfContents;                   //Contains String-Array Pairs where the String is a Main Heading and the Array contains Subheadings
+    private ArrayList<MutableLiveData<Pair<Integer, ArrayList<RectF>>>>      m_PageHighlights;
+    private ArrayList<ArrayList<RectF>>                                      m_PageHighlightsWorkspace;
+        private ExecutorService                                              m_PageHighlightLoaderService;
 
-
-    public static boolean Initialize(@Nullable final Bundle savedInstanceState, final Context applicationContext, final AssetManager assetManager)
+    public ResourceManager(@NonNull final Application application)
     {
-        if (!s_Initialized)
-        {
-            s_Initialized = true;
+        super(application);
 
-            PDFBoxResourceLoader.init(applicationContext);
+        PDFBoxResourceLoader.init(getApplication());
 
-            s_DocumentPagesByteArr = new ArrayList<>();
-            s_PDFDocumentPerPage = new ArrayList<>();
+        m_DocumentTextPages = new ArrayList<>(200);
+        m_HeadingsToPageNumber = new HashMap<>();
+        m_PageNumberToHeadings = new HashMap<>();
+        m_TableOfContents = new ArrayList<>(15);
 
-            if (!LoadDocumentsAsByteArrays(assetManager))
-                return false;
+        if (!LoadDocumentsAsByteArray(getApplication().getAssets()))
+            return;
 
-            if (!LoadPDDocuments())
-                return false;
+        if (!LoadPDDocuments())
+            return;
 
-            s_DocumentTextPages = new ArrayList<>(200);
+        if (!LoadDocumentTextPages(getApplication().getAssets()))
+            return;
 
-            if (!LoadDocumentTextPages(assetManager))
-            return false;
+        if (!LoadDocumentContentDescriptions())
+            return;
 
-            if (savedInstanceState == null)
-            {
-                //First Init
-                s_HeadingsToPageNumber = new HashMap<>();
-                s_PageNumberToHeadings = new HashMap<>();
-                s_TableOfContents = new ArrayList<>(15);
-
-                if (!LoadDocumentContentDescriptions())
-                    return false;
-            }
-            else
-            {
-                //Restore State
-
-                //These casts are safe, see the implementation of Destroy and SerializablePair
-                s_HeadingsToPageNumber      = (HashMap<String, Integer>) savedInstanceState.getSerializable("s_HeadingsToPageNumber");
-                s_PageNumberToHeadings      = (HashMap<Integer, ArrayList<SerializablePair<Integer, String>>>) savedInstanceState.getSerializable("s_PageNumberToHeadings");
-                s_TableOfContents           = (ArrayList<SerializablePair<String, ArrayList<String>>>) savedInstanceState.getSerializable("s_TableOfContents");
-            }
-        }
-
-        return true;
+//        if (savedInstanceState == null)
+//        {
+//
+//        }
+//        else
+//        {
+//            //Restore State
+//
+//            //These casts are safe, see the implementation of Destroy and SerializablePair
+//            m_HeadingsToPageNumber = (HashMap<String, Integer>) savedInstanceState.getSerializable("s_HeadingsToPageNumber");
+//            m_PageNumberToHeadings = (HashMap<Integer, ArrayList<SerializablePair<Integer, String>>>) savedInstanceState.getSerializable("s_PageNumberToHeadings");
+//            m_TableOfContents = (ArrayList<SerializablePair<String, ArrayList<String>>>) savedInstanceState.getSerializable("s_TableOfContents");
+//        }
     }
 
-    public static void Destroy(@NonNull final Bundle outState)
+    @Override
+    protected void onCleared()
     {
-        if (s_Initialized)
-        {
-            s_Initialized = false;
+        //outState.putSerializable("s_HeadingsToPageNumber", m_HeadingsToPageNumber);
+        //outState.putSerializable("s_PageNumberToHeadings", m_PageNumberToHeadings);
+        //outState.putSerializable("s_TableOfContents", m_TableOfContents);
 
-            ClosePDDocuments();
-
-            outState.putSerializable("s_HeadingsToPageNumber", s_HeadingsToPageNumber);
-            outState.putSerializable("s_PageNumberToHeadings", s_PageNumberToHeadings);
-            outState.putSerializable("s_TableOfContents", s_TableOfContents);
-        }
+        ClosePDDocuments();
     }
 
-    private static boolean LoadDocumentsAsByteArrays(final AssetManager assetManager)
+    private boolean LoadDocumentsAsByteArray(final AssetManager assetManager)
     {
         {
             InputStream inputStream = null;
@@ -142,72 +137,17 @@ public class ResourceManager
                 Log.e("SGF Fälthandbok", "Exception thrown while closing document input stream...", e);
             }
 
-            s_DocumentByteArr = output.toByteArray();
-        }
-
-        for (int pageIndex = 0; pageIndex < NUMBER_OF_PAGES; pageIndex++)
-        {
-            InputStream inputStream = null;
-            try
-            {
-                inputStream = assetManager.open(PAGE_FILENAME + String.format("%02d", pageIndex + 1) + ".pdf");
-            }
-            catch (IOException e)
-            {
-                Log.e("SGF Fälthandbok", "Exception thrown while opening document...", e);
-                return false;
-            }
-
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            while (true)
-            {
-                try
-                {
-                    if (((bytesRead = inputStream.read(buffer)) == -1)) break;
-                    output.write(buffer, 0, bytesRead);
-                }
-                catch (IOException e)
-                {
-                    Log.e("SGF Fälthandbok", "Exception thrown while converting document to byte array...", e);
-                    return false;
-                }
-            }
-
-            try
-            {
-                inputStream.close();
-            }
-            catch (IOException e)
-            {
-                Log.e("SGF Fälthandbok", "Exception thrown while closing document input stream...", e);
-            }
-
-            s_DocumentPagesByteArr.add(output.toByteArray());
+            m_DocumentByteArr = output.toByteArray();
         }
 
         return true;
     }
 
-    private static boolean LoadPDDocuments()
+    private boolean LoadPDDocuments()
     {
         try
         {
-            s_PDFDocument = PDDocument.load(s_DocumentByteArr);
-        }
-        catch(IOException e)
-        {
-            Log.e("SGF Fälthandbok", "Exception thrown while loading document to strip...", e);
-            return false;
-        }
-
-        try
-        {
-            for (int pageIndex = 0; pageIndex < NUMBER_OF_PAGES; pageIndex++)
-            {
-                s_PDFDocumentPerPage.add(PDDocument.load(s_DocumentPagesByteArr.get(pageIndex)));
-            }
+            m_PDFDocument = PDDocument.load(m_DocumentByteArr);
         }
         catch(IOException e)
         {
@@ -218,31 +158,19 @@ public class ResourceManager
         return true;
     }
 
-    private static void ClosePDDocuments()
+    private void ClosePDDocuments()
     {
         try
         {
-            if (s_PDFDocument != null) s_PDFDocument.close();
+            if (m_PDFDocument != null) m_PDFDocument.close();
         }
         catch (IOException e)
         {
             Log.e("SGF Fälthandbok", "Exception thrown while closing document...", e);
         }
-
-        try
-        {
-            for (int pageIndex = 0; pageIndex < s_PDFDocumentPerPage.size(); pageIndex++)
-            {
-                s_PDFDocumentPerPage.get(pageIndex).close();
-            }
-        }
-        catch(IOException e)
-        {
-            Log.e("SGF Fälthandbok", "Exception thrown while loading document to strip...", e);
-        }
     }
 
-    private static boolean LoadDocumentTextPages(final AssetManager assetManager)
+    private boolean LoadDocumentTextPages(final AssetManager assetManager)
     {
         InputStream inputStream = null;
         byte[] buffer = null;
@@ -269,7 +197,7 @@ public class ResourceManager
 
             for (int p = 0; p < pages.length(); p++)
             {
-                s_DocumentTextPages.add(pages.getString(p).toLowerCase());
+                m_DocumentTextPages.add(pages.getString(p).toLowerCase());
             }
         }
         catch (JSONException | UnsupportedEncodingException e)
@@ -281,27 +209,27 @@ public class ResourceManager
         return true;
     }
 
-    private static boolean LoadDocumentContentDescriptions()
+    private boolean LoadDocumentContentDescriptions()
     {
         String parsedText = null;
 
         try
         {
             //Load ToC
-            final PDDocumentCatalog documentCatalog = s_PDFDocument.getDocumentCatalog();
+            final PDDocumentCatalog documentCatalog = m_PDFDocument.getDocumentCatalog();
             final PDDocumentOutline tableOfContents = documentCatalog.getDocumentOutline();
             PDOutlineItem currentHeading = tableOfContents.getFirstChild();
             while (currentHeading != null)
             {
                 //Create new Subheadings Entry
                 ArrayList<String> subHeadings = new ArrayList<>();
-                AddHeadingData(currentHeading, s_PDFDocument, documentCatalog);
+                AddHeadingData(currentHeading, m_PDFDocument, documentCatalog);
 
                 //Loop through Chapter Subheadings
                 PDOutlineItem currentSubHeading = currentHeading.getFirstChild();
                 while (currentSubHeading != null)
                 {
-                    AddHeadingData(currentSubHeading, s_PDFDocument, documentCatalog);
+                    AddHeadingData(currentSubHeading, m_PDFDocument, documentCatalog);
 
                     //Create new Chapter Subheadings
                     subHeadings.add(currentSubHeading.getTitle());
@@ -309,7 +237,7 @@ public class ResourceManager
                     currentSubHeading = currentSubHeading.getNextSibling();
                 }
 
-                s_TableOfContents.add(new SerializablePair<>(currentHeading.getTitle(), subHeadings));
+                m_TableOfContents.add(new SerializablePair<>(currentHeading.getTitle(), subHeadings));
                 currentHeading = currentHeading.getNextSibling();
             }
         }
@@ -322,63 +250,345 @@ public class ResourceManager
         return true;
     }
 
-    private static void AddHeadingData(PDOutlineItem currentHeading, PDDocument pdfDocument, PDDocumentCatalog documentCatalog) throws IOException
+    private void AddHeadingData(PDOutlineItem currentHeading, PDDocument pdfDocument, PDDocumentCatalog documentCatalog) throws IOException
     {
         final String headingTitle       = currentHeading.getTitle();
         final PDPage currentPage        = currentHeading.findDestinationPage(pdfDocument);
         final int pageIndex             = documentCatalog.getPages().indexOf(currentPage);
-        final String pageText           = s_DocumentTextPages.get(pageIndex);
+        final String pageText           = m_DocumentTextPages.get(pageIndex);
 
         //Create new Headings to Page Number Entry
-        s_HeadingsToPageNumber.put(headingTitle.replaceAll("\\s+", ""), pageIndex);
+        m_HeadingsToPageNumber.put(headingTitle.replaceAll("\\s+", ""), pageIndex);
 
         //Create new Page Number to Headings Entry
         ArrayList<SerializablePair<Integer, String>> headingsPerCharNumber;
-        if (!s_PageNumberToHeadings.containsKey(pageIndex))
+        if (!m_PageNumberToHeadings.containsKey(pageIndex))
         {
             headingsPerCharNumber = new ArrayList<>();
-            s_PageNumberToHeadings.put(pageIndex, headingsPerCharNumber);
+            m_PageNumberToHeadings.put(pageIndex, headingsPerCharNumber);
         }
         else
         {
-            headingsPerCharNumber = s_PageNumberToHeadings.get(pageIndex);
+            headingsPerCharNumber = m_PageNumberToHeadings.get(pageIndex);
         }
 
         headingsPerCharNumber.add(new SerializablePair<>(pageText.indexOf(headingTitle), headingTitle));
     }
 
-    public static byte[] GetDocumentByteArr()
+    public byte[] GetDocumentByteArr()
     {
-        return s_DocumentByteArr;
+        return m_DocumentByteArr;
     }
 
-    public static PDDocument GetPDFDocument(int pageIndex)
+    public PDDocument GetPDFDocument()
     {
-        return s_PDFDocumentPerPage.get(pageIndex);
+        return m_PDFDocument;
     }
 
-    public static PDDocument GetPDFDocument()
+    public ArrayList<String> GetDocumentTextPages()
     {
-        return s_PDFDocument;
+        return m_DocumentTextPages;
     }
 
-    public static ArrayList<String> GetDocumentTextPages()
+    public HashMap<String, Integer> GetHeadingsToPageNumber()
     {
-        return s_DocumentTextPages;
+        return m_HeadingsToPageNumber;
     }
 
-    public static HashMap<String, Integer> GetHeadingsToPageNumber()
+    public HashMap<Integer, ArrayList<SerializablePair<Integer, String>>> GetPageNumberToHeadings()
     {
-        return s_HeadingsToPageNumber;
+        return m_PageNumberToHeadings;
     }
 
-    public static HashMap<Integer, ArrayList<SerializablePair<Integer, String>>> GetPageNumberToHeadings()
+    public ArrayList<SerializablePair<String, ArrayList<String>>> GetTableOfContents()
     {
-        return s_PageNumberToHeadings;
+        return m_TableOfContents;
     }
 
-    public static ArrayList<SerializablePair<String, ArrayList<String>>> GetTableOfContents()
+    public void SetPageHighlightsObserver(final LifecycleOwner owner, final Observer<Pair<Integer, ArrayList<RectF>>> observer, final int pageIndex)
     {
-        return s_TableOfContents;
+        final int numberOfPages = m_PDFDocument.getNumberOfPages();
+
+        if (m_PageHighlights == null)
+        {
+            m_PageHighlights = new ArrayList<>();
+
+            for (int p = 0; p < numberOfPages; p++)
+            {
+                m_PageHighlights.add(new MutableLiveData<Pair<Integer, ArrayList<RectF>>>());
+            }
+        }
+
+        if (m_PageHighlightsWorkspace == null)
+        {
+            m_PageHighlightsWorkspace = new ArrayList<>(m_PDFDocument.getNumberOfPages());
+
+            for (int p = 0; p < numberOfPages; p++)
+            {
+                m_PageHighlightsWorkspace.add(new ArrayList<RectF>());
+            }
+        }
+
+        if (m_PageHighlightLoaderService == null)
+        {
+            m_PageHighlightLoaderService = Executors.newSingleThreadExecutor();
+        }
+
+        m_PageHighlights.get(pageIndex).observe(owner, observer);
+    }
+
+    public void UpdateBookHighlights(final String highlightString, final int currentPage)
+    {
+        final int numberOfPages = m_PDFDocument.getNumberOfPages();
+
+        if (m_PageHighlights == null)
+        {
+            m_PageHighlights = new ArrayList<>();
+
+            for (int p = 0; p < numberOfPages; p++)
+            {
+                m_PageHighlights.add(new MutableLiveData<Pair<Integer, ArrayList<RectF>>>());
+            }
+        }
+
+        if (m_PageHighlightsWorkspace == null)
+        {
+            m_PageHighlightsWorkspace = new ArrayList<>(m_PDFDocument.getNumberOfPages());
+
+            for (int p = 0; p < numberOfPages; p++)
+            {
+                m_PageHighlightsWorkspace.add(new ArrayList<RectF>());
+            }
+        }
+
+        if (m_PageHighlightLoaderService != null)
+        {
+            m_PageHighlightLoaderService.shutdownNow();
+        }
+
+        m_PageHighlightLoaderService = Executors.newSingleThreadExecutor();
+        UpdatePageHighlights(highlightString, currentPage);
+    }
+
+    private void UpdatePageHighlights(final String highlightString, final int currentPageIndex)
+    {
+        m_PageHighlightLoaderService.submit(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                final int numPages          = m_PDFDocument.getNumberOfPages();
+                final int prevCount         = currentPageIndex;
+                final int afterCount        = numPages - currentPageIndex;
+                final int pingPongRadius    = Math.min(prevCount, afterCount);
+                final int pingPongCount     = 2 * pingPongRadius + 1;
+
+                for (int pingPongIndex = 0; pingPongIndex <= pingPongCount; pingPongIndex++)
+                {
+                    if (Thread.interrupted())
+                        return;
+
+                    final int addedIndex = pingPongIndex / 2;
+                    final int pageIndex = currentPageIndex + (pingPongIndex % 2 == 0 ? addedIndex : -addedIndex);
+
+                    final ArrayList<RectF> currentPageHighlights = m_PageHighlightsWorkspace.get(pageIndex);
+                    currentPageHighlights.clear();
+
+                    try
+                    {
+                        PDFTextStripper pdfStripper = new PDFTextStripper()
+                        {
+                            @Override
+                            protected void writeString(final String text, final List<TextPosition> textPositions) throws IOException
+                            {
+                                float posXInit = 0;
+                                float posXEnd = 0;
+                                float posYInit = 0;
+                                float posYEnd = 0;
+                                float width = 0;
+                                float height = 0;
+                                int searchStringLength = highlightString.length();
+                                String lowerCaseText = text.toLowerCase();
+
+                                final PDRectangle pageBBox = getCurrentPage().getBBox();
+                                final float pageWidth = pageBBox.getWidth();
+                                final float pageHeight = pageBBox.getHeight();
+
+                                int searchIndex = lowerCaseText.indexOf(highlightString);
+
+                                while (searchIndex != -1)
+                                {
+                                    int searchStringEndIndex = searchIndex + searchStringLength - 1;
+                                    TextPosition firstCharacter = textPositions.get(searchIndex);
+                                    TextPosition lastCharacter = textPositions.get(searchStringEndIndex);
+
+                                    posXInit = firstCharacter.getXDirAdj();
+                                    posXEnd = lastCharacter.getXDirAdj();
+                                    posYInit = firstCharacter.getYDirAdj();
+                                    posYEnd = lastCharacter.getYDirAdj();
+                                    width = lastCharacter.getWidthDirAdj();
+                                    height = firstCharacter.getHeightDir();
+
+                                    RectF rect = new RectF(posXInit / pageWidth, (posYInit - height) / pageHeight, (posXEnd + width) / pageWidth, posYEnd / pageHeight);
+                                    currentPageHighlights.add(rect);
+
+                                    searchIndex = lowerCaseText.indexOf(highlightString, searchIndex + searchStringLength);
+                                }
+                            }
+                        };
+
+                        pdfStripper.setStartPage(pageIndex + 1);
+                        pdfStripper.setEndPage(pageIndex + 1);
+
+                        pdfStripper.getText(m_PDFDocument);
+                    }
+                    catch (IOException e)
+                    {
+                        e.printStackTrace();
+                        Log.e("SGF Fälthandbok", "Failed to Strip Text on page index" + pageIndex + "...");
+                    }
+
+                    final MutableLiveData<Pair<Integer, ArrayList<RectF>>> currentPageHighlightsLiveData = m_PageHighlights.get(pageIndex);
+                    currentPageHighlightsLiveData.postValue(new Pair(pageIndex, currentPageHighlights));
+                }
+
+                if (prevCount > afterCount)
+                {
+                    for (int pageIndex = Math.max(0, currentPageIndex - pingPongRadius - 1); pageIndex >= 0; pageIndex--)
+                    {
+                        if (Thread.interrupted())
+                            return;
+
+                        final ArrayList<RectF> currentPageHighlights = m_PageHighlightsWorkspace.get(pageIndex);
+                        currentPageHighlights.clear();
+
+                        try
+                        {
+                            PDFTextStripper pdfStripper = new PDFTextStripper()
+                            {
+                                @Override
+                                protected void writeString(final String text, final List<TextPosition> textPositions) throws IOException
+                                {
+                                    float posXInit = 0;
+                                    float posXEnd = 0;
+                                    float posYInit = 0;
+                                    float posYEnd = 0;
+                                    float width = 0;
+                                    float height = 0;
+                                    int searchStringLength = highlightString.length();
+                                    String lowerCaseText = text.toLowerCase();
+
+                                    final PDRectangle pageBBox = getCurrentPage().getBBox();
+                                    final float pageWidth = pageBBox.getWidth();
+                                    final float pageHeight = pageBBox.getHeight();
+
+                                    int searchIndex = lowerCaseText.indexOf(highlightString);
+
+                                    while (searchIndex != -1)
+                                    {
+                                        int searchStringEndIndex = searchIndex + searchStringLength - 1;
+                                        TextPosition firstCharacter = textPositions.get(searchIndex);
+                                        TextPosition lastCharacter = textPositions.get(searchStringEndIndex);
+
+                                        posXInit = firstCharacter.getXDirAdj();
+                                        posXEnd = lastCharacter.getXDirAdj();
+                                        posYInit = firstCharacter.getYDirAdj();
+                                        posYEnd = lastCharacter.getYDirAdj();
+                                        width = lastCharacter.getWidthDirAdj();
+                                        height = firstCharacter.getHeightDir();
+
+                                        RectF rect = new RectF(posXInit / pageWidth, (posYInit - height) / pageHeight, (posXEnd + width) / pageWidth, posYEnd / pageHeight);
+                                        currentPageHighlights.add(rect);
+
+                                        searchIndex = lowerCaseText.indexOf(highlightString, searchIndex + searchStringLength);
+                                    }
+                                }
+                            };
+
+                            pdfStripper.setStartPage(pageIndex + 1);
+                            pdfStripper.setEndPage(pageIndex + 1);
+
+                            pdfStripper.getText(m_PDFDocument);
+                        }
+                        catch (IOException e)
+                        {
+                            e.printStackTrace();
+                            Log.e("SGF Fälthandbok", "Failed to Strip Text on page index" + pageIndex + "...");
+                        }
+
+                        final MutableLiveData<Pair<Integer, ArrayList<RectF>>> currentPageHighlightsLiveData = m_PageHighlights.get(pageIndex);
+                        currentPageHighlightsLiveData.postValue(new Pair(pageIndex, currentPageHighlights));
+                    }
+                }
+                else if (afterCount > prevCount)
+                {
+                    for (int pageIndex = Math.min(numPages - 1, currentPageIndex + pingPongRadius + 1); pageIndex < numPages; pageIndex++)
+                    {
+                        if (Thread.interrupted())
+                            return;
+
+                        final ArrayList<RectF> currentPageHighlights = m_PageHighlightsWorkspace.get(pageIndex);
+                        currentPageHighlights.clear();
+
+                        try
+                        {
+                            PDFTextStripper pdfStripper = new PDFTextStripper()
+                            {
+                                @Override
+                                protected void writeString(final String text, final List<TextPosition> textPositions) throws IOException
+                                {
+                                    float posXInit = 0;
+                                    float posXEnd = 0;
+                                    float posYInit = 0;
+                                    float posYEnd = 0;
+                                    float width = 0;
+                                    float height = 0;
+                                    int searchStringLength = highlightString.length();
+                                    String lowerCaseText = text.toLowerCase();
+
+                                    final PDRectangle pageBBox = getCurrentPage().getBBox();
+                                    final float pageWidth = pageBBox.getWidth();
+                                    final float pageHeight = pageBBox.getHeight();
+
+                                    int searchIndex = lowerCaseText.indexOf(highlightString);
+
+                                    while (searchIndex != -1)
+                                    {
+                                        int searchStringEndIndex = searchIndex + searchStringLength - 1;
+                                        TextPosition firstCharacter = textPositions.get(searchIndex);
+                                        TextPosition lastCharacter = textPositions.get(searchStringEndIndex);
+
+                                        posXInit = firstCharacter.getXDirAdj();
+                                        posXEnd = lastCharacter.getXDirAdj();
+                                        posYInit = firstCharacter.getYDirAdj();
+                                        posYEnd = lastCharacter.getYDirAdj();
+                                        width = lastCharacter.getWidthDirAdj();
+                                        height = firstCharacter.getHeightDir();
+
+                                        RectF rect = new RectF(posXInit / pageWidth, (posYInit - height) / pageHeight, (posXEnd + width) / pageWidth, posYEnd / pageHeight);
+                                        currentPageHighlights.add(rect);
+
+                                        searchIndex = lowerCaseText.indexOf(highlightString, searchIndex + searchStringLength);
+                                    }
+                                }
+                            };
+
+                            pdfStripper.setStartPage(pageIndex + 1);
+                            pdfStripper.setEndPage(pageIndex + 1);
+
+                            pdfStripper.getText(m_PDFDocument);
+                        }
+                        catch (IOException e)
+                        {
+                            e.printStackTrace();
+                            Log.e("SGF Fälthandbok", "Failed to Strip Text on page index" + pageIndex + "...");
+                        }
+
+                        final MutableLiveData<Pair<Integer, ArrayList<RectF>>> currentPageHighlightsLiveData = m_PageHighlights.get(pageIndex);
+                        currentPageHighlightsLiveData.postValue(new Pair(pageIndex, currentPageHighlights));
+                    }
+                }
+            }
+        });
     }
 }

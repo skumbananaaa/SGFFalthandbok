@@ -30,7 +30,7 @@ public class SearchResultsAdapter extends ArrayAdapter<SearchResult>
         super(context, 0 , list);
         m_Context           = context;
         m_SearchResultsList = list;
-        m_HighlightColor    = context.getColor(R.color.colorAccentLight);
+        m_HighlightColor    = Color.YELLOW;
     }
 
     void SetSearchedText(String text)

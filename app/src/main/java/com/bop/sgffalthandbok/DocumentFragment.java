@@ -11,7 +11,10 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,6 +35,8 @@ import static com.bop.sgffalthandbok.SearchFragment.MIN_SEARCH_STRING_LENGTH;
 
 public class DocumentFragment extends Fragment implements OnLoadCompleteListener, OnDrawListener, View.OnClickListener
 {
+    private ResourceManager                 m_ResourceManager;
+
     private byte[]                          m_DocumentByteArr;
     private PDFView                         m_PDFView;
     private PDDocument                      m_PDFDocument;
@@ -58,12 +63,14 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     {
         super.onViewCreated(view, savedInstanceState);
 
-        m_PDFDocument           = ResourceManager.GetPDFDocument();
-        m_DocumentByteArr       = ResourceManager.GetDocumentByteArr();
-        m_HeadingsToPageNumber  = ResourceManager.GetHeadingsToPageNumber();
+        m_ResourceManager = new ViewModelProvider(requireActivity()).get(ResourceManager.class);
+
+        m_PDFDocument           = m_ResourceManager.GetPDFDocument();
+        m_DocumentByteArr       = m_ResourceManager.GetDocumentByteArr();
+        m_HeadingsToPageNumber  = m_ResourceManager.GetHeadingsToPageNumber();
 
         m_HighlightPaint = new Paint();
-        m_HighlightPaint.setColor(getContext().getColor(R.color.colorAccentLight));
+        m_HighlightPaint.setColor(Color.YELLOW);
         m_HighlightPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.MULTIPLY));
 
         final int defaultPage;
@@ -121,15 +128,6 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     @Override
     public void onSaveInstanceState(@NonNull final Bundle outState)
     {
-        //m_HighlightsPerPage might be null if this is not current fragment -> onViewCreated not called ->  loadComplete not called -> m_HighlightsPerPage not initialized
-        if (m_HighlightsPerPage != null)
-        {
-            for (PageHighlights pageHighlights : m_HighlightsPerPage)
-            {
-                pageHighlights.CancelUpdate();
-            }
-        }
-
         outState.putString("m_CurrentSearch", m_CurrentSearch);
         outState.putInt("CURRENT_PAGE", m_PDFView.getCurrentPage());
         super.onSaveInstanceState(outState);
@@ -140,34 +138,34 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     {
         m_HighlightsPerPage = new ArrayList<>(nbPages);
 
-        for (int i = 0; i < nbPages; i++)
+        for (int p = 0; p < nbPages; p++)
         {
-            m_HighlightsPerPage.add(new PageHighlights(m_PDFDocument, i,5));
+            m_HighlightsPerPage.add(new PageHighlights());
+
+            m_ResourceManager.SetPageHighlightsObserver(this, new Observer<Pair<Integer, ArrayList<RectF>>>()
+            {
+                @Override
+                public void onChanged(final Pair<Integer, ArrayList<RectF>> integerArrayListPair)
+                {
+                    PageHighlights pageHighlights = m_HighlightsPerPage.get(integerArrayListPair.first);
+
+                    pageHighlights.SetIsDirty(false);
+                    pageHighlights.SetHighlights(integerArrayListPair.second);
+                }
+            }, p);
         }
 
         if (m_CurrentSearch.length() > MIN_SEARCH_STRING_LENGTH)
         {
             final int pageIndex = m_PDFView.getCurrentPage();
 
-            ThreadPool.Execute(new Runnable()
+            for (int p = 0; p < nbPages; p++)
             {
-                @Override
-                public void run()
-                {
-                    //Update pages around main page first
-                    m_HighlightsPerPage.get(pageIndex).Update(m_CurrentSearch, true);
+                PageHighlights pageHighlights =  m_HighlightsPerPage.get(p);
+                pageHighlights.SetIsDirty(true);
+            }
 
-                    for (int p = Math.max(0, pageIndex - 1); p >= 0; p--)
-                    {
-                        m_HighlightsPerPage.get(p).Update(m_CurrentSearch, true);
-                    }
-
-                    for (int p = Math.min(m_PDFDocument.getNumberOfPages() - 1, pageIndex + 1); p < m_PDFDocument.getNumberOfPages(); p++)
-                    {
-                        m_HighlightsPerPage.get(p).Update(m_CurrentSearch, true);
-                    }
-                }
-            });
+            m_ResourceManager.UpdateBookHighlights(m_CurrentSearch, pageIndex);
         }
     }
 
@@ -218,25 +216,37 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
             m_CurrentSearch = searchString;
             m_PDFView.jumpTo(pageIndex);
 
-            //Start Asynchronous Page Highlighting, we do not need to cancel old jobs since the new search string will be set
-            ThreadPool.Execute(new Runnable()
+            for (int p = 0; p < m_PDFDocument.getNumberOfPages(); p++)
             {
-                @Override
-                public void run()
-                {
-                    m_HighlightsPerPage.get(pageIndex).Update(m_CurrentSearch, true);
+                PageHighlights pageHighlights =  m_HighlightsPerPage.get(p);
+                pageHighlights.SetIsDirty(true);
+            }
 
-                    for (int p = Math.max(0, pageIndex - 1); p >= 0; p--)
-                    {
-                        m_HighlightsPerPage.get(p).Update(m_CurrentSearch, true);
-                    }
+            m_ResourceManager.UpdateBookHighlights(m_CurrentSearch, pageIndex);
 
-                    for (int p = Math.min(m_PDFDocument.getNumberOfPages() - 1, pageIndex + 1); p < m_PDFDocument.getNumberOfPages(); p++)
-                    {
-                        m_HighlightsPerPage.get(p).Update(m_CurrentSearch, true);
-                    }
-                }
-            });
+            //Start Asynchronous Page Highlighting, we do not need to cancel old jobs since the new search string will be set
+//            {
+//                PageHighlights pageHighlights =  m_HighlightsPerPage.get(pageIndex);
+//                pageHighlights.SetIsDirty(true);
+//
+//                m_ResourceManager.UpdatePageHighlights(m_CurrentSearch, pageIndex);
+//            }
+//
+//            for (int p = Math.max(0, pageIndex - 1); p >= 0; p--)
+//            {
+//                PageHighlights pageHighlights =  m_HighlightsPerPage.get(p);
+//                pageHighlights.SetIsDirty(true);
+//
+//                m_ResourceManager.UpdatePageHighlights(m_CurrentSearch, p);
+//            }
+//
+//            for (int p = Math.min(m_PDFDocument.getNumberOfPages() - 1, pageIndex + 1); p < m_PDFDocument.getNumberOfPages(); p++)
+//            {
+//                PageHighlights pageHighlights =  m_HighlightsPerPage.get(p);
+//                pageHighlights.SetIsDirty(true);
+//
+//                m_ResourceManager.UpdatePageHighlights(m_CurrentSearch, p);
+//            }
         }
     }
 

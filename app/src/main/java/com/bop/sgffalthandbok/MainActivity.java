@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.util.Pair;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -51,20 +52,20 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     private DocumentFragment        m_DocumentFragment;
     private SearchFragment          m_SearchFragment;
 
+    private ResourceManager         m_ResourceManager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ThreadPool.Init();
+        m_ResourceManager = new ViewModelProvider(this, new ViewModelProvider.AndroidViewModelFactory(getApplication())).get(ResourceManager.class);
 
         m_FragmentManager   = getSupportFragmentManager();
 
         m_BottomNavigationView = findViewById(R.id.bottomNavigation);
         m_BottomNavigationView.setOnNavigationItemSelectedListener(this);
-
-        ResourceManager.Initialize(savedInstanceState, getApplicationContext(), getAssets());
 
         if (savedInstanceState != null)
         {
@@ -101,33 +102,11 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         }
     }
 
-    @Override
-    protected void onPostResume()
-    {
-        ThreadPool.Init();
-        super.onPostResume();
-    }
-
-    @Override
-    protected void onPause()
-    {
-        ThreadPool.Shutdown();
-        super.onPause();
-    }
-
-    @Override
-    protected void onStop()
-    {
-        ThreadPool.Shutdown();
-        super.onStop();
-    }
 
     @Override
     protected void onSaveInstanceState(@NonNull final Bundle outState)
     {
         super.onSaveInstanceState(outState);
-
-        ResourceManager.Destroy(outState);
 
         outState.putBoolean("m_DocumentIsCurrent", m_DocumentIsCurrent);
         outState.putInt("SELECTED_NAV_ITEM",  m_BottomNavigationView.getSelectedItemId());

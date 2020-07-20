@@ -7,6 +7,7 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -76,8 +77,10 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
     {
         super.onViewCreated(view, savedInstanceState);
 
-        m_DocumentTextPages     = ResourceManager.GetDocumentTextPages();
-        m_PageNumberToHeadings  = ResourceManager.GetPageNumberToHeadings();
+        ResourceManager resourceManager = new ViewModelProvider(requireActivity()).get(ResourceManager.class);
+
+        m_DocumentTextPages     = resourceManager.GetDocumentTextPages();
+        m_PageNumberToHeadings  = resourceManager.GetPageNumberToHeadings();
 
         m_SearchString          = "";
 
