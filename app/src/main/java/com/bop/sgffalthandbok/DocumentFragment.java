@@ -23,6 +23,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.github.barteksc.pdfviewer.PDFView;
+import com.github.barteksc.pdfviewer.link.DefaultLinkHandler;
 import com.github.barteksc.pdfviewer.listener.OnDrawListener;
 import com.github.barteksc.pdfviewer.listener.OnLoadCompleteListener;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
@@ -110,7 +111,7 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
                     .enableAntialiasing(true) // improve rendering a little bit on low-res screens
                     .spacing(0)// spacing between pages in dp. To define spacing color, set view backgrounds
                     .autoSpacing(false) // add dynamic spacing to fit each page on its own on the screen
-                    //.linkHandler(DefaultLinkHandler)
+                    .linkHandler(new DefaultLinkHandler(m_PDFView))
                     .pageFitPolicy(FitPolicy.WIDTH) // mode to fit pages in the view
                     .fitEachPage(false) // fit each page to the view, else smaller pages are scaled relative to largest page.
                     .pageSnap(false) // snap pages to screen boundaries
@@ -223,30 +224,6 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
             }
 
             m_ResourceManager.UpdateBookHighlights(m_CurrentSearch, pageIndex);
-
-            //Start Asynchronous Page Highlighting, we do not need to cancel old jobs since the new search string will be set
-//            {
-//                PageHighlights pageHighlights =  m_HighlightsPerPage.get(pageIndex);
-//                pageHighlights.SetIsDirty(true);
-//
-//                m_ResourceManager.UpdatePageHighlights(m_CurrentSearch, pageIndex);
-//            }
-//
-//            for (int p = Math.max(0, pageIndex - 1); p >= 0; p--)
-//            {
-//                PageHighlights pageHighlights =  m_HighlightsPerPage.get(p);
-//                pageHighlights.SetIsDirty(true);
-//
-//                m_ResourceManager.UpdatePageHighlights(m_CurrentSearch, p);
-//            }
-//
-//            for (int p = Math.min(m_PDFDocument.getNumberOfPages() - 1, pageIndex + 1); p < m_PDFDocument.getNumberOfPages(); p++)
-//            {
-//                PageHighlights pageHighlights =  m_HighlightsPerPage.get(p);
-//                pageHighlights.SetIsDirty(true);
-//
-//                m_ResourceManager.UpdatePageHighlights(m_CurrentSearch, p);
-//            }
         }
     }
 

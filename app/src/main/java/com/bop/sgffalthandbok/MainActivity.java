@@ -46,6 +46,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     private YouTubePlayer           m_YouTubePlayer;
 
     private boolean                 m_DocumentIsCurrent;
+    private boolean                 m_VideoWasPlaying;
 
     private ContentFragment         m_ContentFragment;
     private YouTubePlayerFragmentX  m_VideoFragment;
@@ -70,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         if (savedInstanceState != null)
         {
             m_DocumentIsCurrent = savedInstanceState.getBoolean("m_DocumentIsCurrent");
+            m_VideoWasPlaying = savedInstanceState.getBoolean("m_VideoWasPlaying");
 
             m_ContentFragment   = (ContentFragment) m_FragmentManager.findFragmentByTag("Content");
             m_VideoFragment     = (YouTubePlayerFragmentX) m_FragmentManager.findFragmentByTag("Video");
@@ -83,6 +85,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         else
         {
             m_DocumentIsCurrent = true;
+            m_VideoWasPlaying = false;
 
             m_ContentFragment   = new ContentFragment();
             m_VideoFragment     = new YouTubePlayerFragmentX();
@@ -108,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     {
         super.onSaveInstanceState(outState);
 
+        outState.putBoolean("m_VideoWasPlaying", m_YouTubePlayer.isPlaying());
         outState.putBoolean("m_DocumentIsCurrent", m_DocumentIsCurrent);
         outState.putInt("SELECTED_NAV_ITEM",  m_BottomNavigationView.getSelectedItemId());
     }
@@ -171,10 +175,14 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     @Override
     public void OnHeadingSelected(final String heading)
     {
-        if (heading.equals("TestVideo"))
+        String videoURI = m_ResourceManager.GetURIIfVideo(heading);
+
+        if (videoURI.length() > 0)
         {
             m_DocumentIsCurrent = false;
             m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
+
+            m_YouTubePlayer.loadVideo(videoURI);
         }
         else
         {
@@ -224,12 +232,14 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         m_YouTubePlayer = youTubePlayer;
         m_YouTubePlayer.setPlayerStyle(YouTubePlayer.PlayerStyle.DEFAULT);
 
-        if (!wasRestored)
+        if (wasRestored)
         {
-            m_YouTubePlayer.loadVideo("yonwBxVlLDk");
+            if (m_VideoWasPlaying)
+            {
+                youTubePlayer.play();
+                m_VideoWasPlaying = false;
+            }
         }
-
-        m_YouTubePlayer.play();
     }
 
     @Override

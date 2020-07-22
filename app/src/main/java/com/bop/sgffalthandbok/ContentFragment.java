@@ -81,8 +81,6 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
             }
         }
 
-        m_ListAdapter.add("Test Video");
-
         m_ListView.setOnItemClickListener(this);
     }
 

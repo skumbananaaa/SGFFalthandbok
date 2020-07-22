@@ -47,6 +47,7 @@ public class ResourceManager extends AndroidViewModel
     private HashMap<String, Integer>                                         m_HeadingsToPageNumber;              //Contains Key-Value Pairs of a Heading (with Separators removed) to a Page Number
     private HashMap<Integer, ArrayList<SerializablePair<Integer, String>>>   m_PageNumberToHeadings;              //Contains Key-Value Pairs of a Page Number which maps to a Sorted Array of CharIndex-Heading Pairs
     private ArrayList<SerializablePair<String, ArrayList<String>>>           m_TableOfContents;                   //Contains String-Array Pairs where the String is a Main Heading and the Array contains Subheadings
+    private ArrayList<Pair<String, String>>                                  m_Videos;
 
     private ArrayList<MutableLiveData<Pair<Integer, ArrayList<RectF>>>>      m_PageHighlights;
     private ArrayList<ArrayList<RectF>>                                      m_PageHighlightsWorkspace;
@@ -63,6 +64,18 @@ public class ResourceManager extends AndroidViewModel
         m_PageNumberToHeadings = new HashMap<>();
         m_TableOfContents = new ArrayList<>(15);
 
+        m_Videos = new ArrayList<>(10);
+        m_Videos.add(new Pair("Video: Skruvprovtagning", "yonwBxVlLDk"));
+        m_Videos.add(new Pair("Video: Kolvprovtagning (I)", "3bUoIlOarsw"));
+        m_Videos.add(new Pair("Video: Kolvprovtagning (II)", "Xa-gp1XGfDw"));
+        m_Videos.add(new Pair("Video: Trycksondering", "eqso_AoABnM"));
+        m_Videos.add(new Pair("Video: Viktsondering", "6_CEWBkyiD8"));
+        m_Videos.add(new Pair("Video: Hejarsondering", "oqUgIU6Qn9c"));
+        m_Videos.add(new Pair("Video: Jord-berg-sondering", "tbrlP-vvgT4"));
+        m_Videos.add(new Pair("Video: Spetstrycksondering", "NbhLCYSIojk"));
+        m_Videos.add(new Pair("Video: Vinge", "aoTHVICJHTQ"));
+        m_Videos.add(new Pair("Video: SGFs Geofysikfilm", "5e7yiEa5CK4"));
+
         if (!LoadDocumentsAsByteArray(getApplication().getAssets()))
             return;
 
@@ -74,29 +87,11 @@ public class ResourceManager extends AndroidViewModel
 
         if (!LoadDocumentContentDescriptions())
             return;
-
-//        if (savedInstanceState == null)
-//        {
-//
-//        }
-//        else
-//        {
-//            //Restore State
-//
-//            //These casts are safe, see the implementation of Destroy and SerializablePair
-//            m_HeadingsToPageNumber = (HashMap<String, Integer>) savedInstanceState.getSerializable("s_HeadingsToPageNumber");
-//            m_PageNumberToHeadings = (HashMap<Integer, ArrayList<SerializablePair<Integer, String>>>) savedInstanceState.getSerializable("s_PageNumberToHeadings");
-//            m_TableOfContents = (ArrayList<SerializablePair<String, ArrayList<String>>>) savedInstanceState.getSerializable("s_TableOfContents");
-//        }
     }
 
     @Override
     protected void onCleared()
     {
-        //outState.putSerializable("s_HeadingsToPageNumber", m_HeadingsToPageNumber);
-        //outState.putSerializable("s_PageNumberToHeadings", m_PageNumberToHeadings);
-        //outState.putSerializable("s_TableOfContents", m_TableOfContents);
-
         ClosePDDocuments();
     }
 
@@ -232,12 +227,32 @@ public class ResourceManager extends AndroidViewModel
                     AddHeadingData(currentSubHeading, m_PDFDocument, documentCatalog);
 
                     //Create new Chapter Subheadings
-                    subHeadings.add(currentSubHeading.getTitle());
+                    String subHeadingTitle = currentSubHeading.getTitle();
+                    subHeadings.add(subHeadingTitle);
 
                     currentSubHeading = currentSubHeading.getNextSibling();
                 }
 
-                m_TableOfContents.add(new SerializablePair<>(currentHeading.getTitle(), subHeadings));
+                String headingTitle = currentHeading.getTitle();
+
+                if (headingTitle.equals("3. Tidiga skeden \n\t– kartor och geofysiska metoder"))
+                {
+                    subHeadings.add(m_Videos.get(0).first);
+                    subHeadings.add(m_Videos.get(1).first);
+                    subHeadings.add(m_Videos.get(2).first);
+                    subHeadings.add(m_Videos.get(3).first);
+                    subHeadings.add(m_Videos.get(4).first);
+                    subHeadings.add(m_Videos.get(5).first);
+                    subHeadings.add(m_Videos.get(6).first);
+                    subHeadings.add(m_Videos.get(7).first);
+                    subHeadings.add(m_Videos.get(8).first);
+                }
+                else if (headingTitle.equals("4. Teknik för inmätning och utsättning"))
+                {
+                    subHeadings.add(m_Videos.get(9).first);
+                }
+
+                m_TableOfContents.add(new SerializablePair<>(headingTitle, subHeadings));
                 currentHeading = currentHeading.getNextSibling();
             }
         }
@@ -303,6 +318,22 @@ public class ResourceManager extends AndroidViewModel
     public ArrayList<SerializablePair<String, ArrayList<String>>> GetTableOfContents()
     {
         return m_TableOfContents;
+    }
+
+    public String GetURIIfVideo(String heading)
+    {
+        for (Pair<String, String> video : m_Videos)
+        {
+            String videoTitle = video.first;
+
+            //Replace whitespace characters with nothing to match returned value by ContentFragment
+            videoTitle = videoTitle.replaceAll("\\s+", "");
+
+            if (heading.equals(videoTitle))
+                return video.second;
+        }
+
+        return "";
     }
 
     public void SetPageHighlightsObserver(final LifecycleOwner owner, final Observer<Pair<Integer, ArrayList<RectF>>> observer, final int pageIndex)
