@@ -36,7 +36,7 @@ import java.util.HashMap;
 
 import static com.bop.sgffalthandbok.SearchFragment.MIN_SEARCH_STRING_LENGTH;
 
-public class DocumentFragment extends Fragment implements OnLoadCompleteListener, OnDrawListener, OnTapListener, View.OnClickListener
+public class DocumentFragment extends Fragment implements OnLoadCompleteListener, OnDrawListener, View.OnClickListener, CustomLinkHandler.OnLinkConfirmedListener
 {
     private ResourceManager                 m_ResourceManager;
 
@@ -55,6 +55,8 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     private Paint                           m_HighlightPaint;
 
     private OnToggleNavbarListener          m_ToggleNavbarListener;
+
+    private boolean                         m_NextClickEventOnPDFIsLink;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
@@ -109,13 +111,13 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
                     //.onError(onErrorListener)
                     //.onPageError(onPageErrorListener)
                     //.onRender(onRenderListener) // called after document is rendered for the first time
-                    .onTap(this) // called on single tap, return true if handled, false to toggle scroll handle visibility
+                    //.onTap(this) // called on single tap, return true if handled, false to toggle scroll handle visibility
                     //.onLongPress(onLongPressListener)
                     .enableAnnotationRendering(false) // render annotations (such as comments, colors or forms)
                     .enableAntialiasing(true) // improve rendering a little bit on low-res screens
                     .spacing(0)// spacing between pages in dp. To define spacing color, set view backgrounds
                     .autoSpacing(false) // add dynamic spacing to fit each page on its own on the screen
-                    .linkHandler(new CustomLinkHandler(m_PDFView))
+                    .linkHandler(new CustomLinkHandler(m_PDFView, this))
                     .pageFitPolicy(FitPolicy.WIDTH) // mode to fit pages in the view
                     .fitEachPage(false) // fit each page to the view, else smaller pages are scaled relative to largest page.
                     .pageSnap(false) // snap pages to screen boundaries
@@ -124,10 +126,14 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
                     .load();
         }
 
+        m_PDFView.setOnClickListener(this);
+
         m_HighlightInfoContainerView    = view.findViewById(R.id.documentHighlightInfoContainer);
         m_HighlightInfoView             = view.findViewById(R.id.documentHighlightInfo);
         m_ClearHighlightButton          = view.findViewById(R.id.clearHighlightButton);
         m_ClearHighlightButton.setOnClickListener(this);
+
+        m_NextClickEventOnPDFIsLink = false;
     }
 
     @Override
@@ -180,23 +186,31 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     }
 
     @Override
-    public void onClick(final View v)
+    public void OnLinkConfirmed()
     {
-        //Called on button click, Assume Clear Highlight Button
-        m_CurrentSearch = "";
-        m_HighlightInfoContainerView.setVisibility(View.GONE);
+        m_NextClickEventOnPDFIsLink = true;
     }
 
     @Override
-    public boolean onTap(final MotionEvent e)
+    public void onClick(final View v)
     {
-        if (m_ToggleNavbarListener != null)
+        if (v == m_PDFView)
         {
-            m_ToggleNavbarListener.ToggleNavbar();
-            return true;
-        }
+            if (!m_NextClickEventOnPDFIsLink)
+            {
+                if (m_ToggleNavbarListener != null)
+                {
+                    m_ToggleNavbarListener.ToggleNavbar();
+                }
+            }
 
-        return false;
+            m_NextClickEventOnPDFIsLink = false;
+        }
+        else if (v == m_ClearHighlightButton)
+        {
+            m_CurrentSearch = "";
+            m_HighlightInfoContainerView.setVisibility(View.GONE);
+        }
     }
 
     @Override

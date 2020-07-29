@@ -9,26 +9,25 @@ import com.github.barteksc.pdfviewer.PDFView;
 import com.github.barteksc.pdfviewer.link.LinkHandler;
 import com.github.barteksc.pdfviewer.model.LinkTapEvent;
 
-import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
-import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
-
 public class CustomLinkHandler implements LinkHandler
 {
     private static final String TAG = CustomLinkHandler.class.getSimpleName();
 
-    private PDFView m_PDFView;
-    private OnVideoLinkSelectedListener  m_Listener;
+    private PDFView                     m_PDFView;
+    private OnVideoLinkSelectedListener m_OnVideoLinkSelectedListener;
+    private OnLinkConfirmedListener     m_OnLinkConfirmedListener;
 
     public interface OnVideoLinkSelectedListener
     {
-        public void OnVideoLinkSelected(String video);
+        void OnVideoLinkSelected(String video);
     }
 
-    public CustomLinkHandler(PDFView pdfView)
+    public interface OnLinkConfirmedListener
+    {
+        void OnLinkConfirmed();
+    }
+
+    public CustomLinkHandler(PDFView pdfView, OnLinkConfirmedListener onLinkConfirmedListener)
     {
         m_PDFView = pdfView;
 
@@ -36,17 +35,21 @@ public class CustomLinkHandler implements LinkHandler
 
         try
         {
-            m_Listener = (OnVideoLinkSelectedListener)context;
+            m_OnVideoLinkSelectedListener = (OnVideoLinkSelectedListener)context;
         }
         catch (ClassCastException e)
         {
             throw new ClassCastException(context.toString() + " must implement OnVideoLinkSelected");
         }
+
+        m_OnLinkConfirmedListener = onLinkConfirmedListener;
     }
 
     @Override
     public void handleLinkEvent(LinkTapEvent event)
     {
+        m_OnLinkConfirmedListener.OnLinkConfirmed();
+
         String uri = event.getLink().getUri();
         Integer page = event.getLink().getDestPageIdx();
 
@@ -54,7 +57,7 @@ public class CustomLinkHandler implements LinkHandler
         {
             if (uri.contains("Video: "))
             {
-                m_Listener.OnVideoLinkSelected(uri.substring(uri.indexOf('[') + 1, uri.indexOf(']')).replaceAll("\\s+", ""));
+                m_OnVideoLinkSelectedListener.OnVideoLinkSelected(uri.substring(uri.indexOf('[') + 1, uri.indexOf(']')).replaceAll("\\s+", ""));
             }
             else
             {

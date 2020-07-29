@@ -222,6 +222,11 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                 constraintSet.connect(R.id.frameLayoutFragment, ConstraintSet.BOTTOM, R.id.mainLayout, ConstraintSet.BOTTOM);
                 constraintSet.applyTo(m_MainConstraintLayout);
 
+                if (!m_BottomNavigationVisible)
+                {
+                    ToggleNavbar();
+                }
+
                 return true;
             }
             case VIDEO:
@@ -237,6 +242,12 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                 constraintSet.clone(m_MainConstraintLayout);
                 constraintSet.connect(R.id.frameLayoutFragment, ConstraintSet.BOTTOM, R.id.bottomNavigation, ConstraintSet.TOP);
                 constraintSet.applyTo(m_MainConstraintLayout);
+
+                if (!m_BottomNavigationVisible)
+                {
+                    ToggleNavbar();
+                }
+
                 return true;
             }
             case DOCUMENT:
@@ -268,6 +279,11 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                 constraintSet.clone(m_MainConstraintLayout);
                 constraintSet.connect(R.id.frameLayoutFragment, ConstraintSet.BOTTOM, R.id.mainLayout, ConstraintSet.BOTTOM);
                 constraintSet.applyTo(m_MainConstraintLayout);
+
+                if (!m_BottomNavigationVisible)
+                {
+                    ToggleNavbar();
+                }
 
                 return true;
             }
