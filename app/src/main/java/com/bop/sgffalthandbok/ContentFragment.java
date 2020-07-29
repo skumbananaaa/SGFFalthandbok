@@ -44,7 +44,7 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
         }
         catch (ClassCastException e)
         {
-            throw new ClassCastException(context.toString() + " must implement OnArticleSelectedListener");
+            throw new ClassCastException(context.toString() + " must implement OnHeadingSelectedListener");
         }
     }
 
@@ -89,6 +89,11 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
     {
         MaterialTextView clickedView = (MaterialTextView)view;
         String clickedText = clickedView.getText().toString();
-        m_Listener.OnHeadingSelected(clickedText.replaceAll("\\s+", ""));
+
+        clickedText = clickedText.replaceAll("Film:", "");
+        clickedText = clickedText.replaceAll("Instruktionsvideo:", "");
+        clickedText = clickedText.replaceAll("\\s+", "");
+
+        m_Listener.OnHeadingSelected(clickedText);
     }
 }

@@ -17,6 +17,7 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -26,6 +27,7 @@ import com.github.barteksc.pdfviewer.PDFView;
 import com.github.barteksc.pdfviewer.link.DefaultLinkHandler;
 import com.github.barteksc.pdfviewer.listener.OnDrawListener;
 import com.github.barteksc.pdfviewer.listener.OnLoadCompleteListener;
+import com.github.barteksc.pdfviewer.listener.OnTapListener;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
@@ -34,7 +36,7 @@ import java.util.HashMap;
 
 import static com.bop.sgffalthandbok.SearchFragment.MIN_SEARCH_STRING_LENGTH;
 
-public class DocumentFragment extends Fragment implements OnLoadCompleteListener, OnDrawListener, View.OnClickListener
+public class DocumentFragment extends Fragment implements OnLoadCompleteListener, OnDrawListener, OnTapListener, View.OnClickListener
 {
     private ResourceManager                 m_ResourceManager;
 
@@ -51,6 +53,8 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     private ArrayList<PageHighlights>       m_HighlightsPerPage;
 
     private Paint                           m_HighlightPaint;
+
+    private OnToggleNavbarListener          m_ToggleNavbarListener;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
@@ -105,13 +109,13 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
                     //.onError(onErrorListener)
                     //.onPageError(onPageErrorListener)
                     //.onRender(onRenderListener) // called after document is rendered for the first time
-                    //.onTap(onTapListener) // called on single tap, return true if handled, false to toggle scroll handle visibility
+                    .onTap(this) // called on single tap, return true if handled, false to toggle scroll handle visibility
                     //.onLongPress(onLongPressListener)
                     .enableAnnotationRendering(false) // render annotations (such as comments, colors or forms)
                     .enableAntialiasing(true) // improve rendering a little bit on low-res screens
                     .spacing(0)// spacing between pages in dp. To define spacing color, set view backgrounds
                     .autoSpacing(false) // add dynamic spacing to fit each page on its own on the screen
-                    .linkHandler(new DefaultLinkHandler(m_PDFView))
+                    .linkHandler(new CustomLinkHandler(m_PDFView))
                     .pageFitPolicy(FitPolicy.WIDTH) // mode to fit pages in the view
                     .fitEachPage(false) // fit each page to the view, else smaller pages are scaled relative to largest page.
                     .pageSnap(false) // snap pages to screen boundaries
@@ -170,12 +174,29 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
         }
     }
 
+    public void SetToggleNavbarListener(final OnToggleNavbarListener toggleNavbarListener)
+    {
+        m_ToggleNavbarListener = toggleNavbarListener;
+    }
+
     @Override
     public void onClick(final View v)
     {
-        //Assume Clear Highlight Button
+        //Called on button click, Assume Clear Highlight Button
         m_CurrentSearch = "";
         m_HighlightInfoContainerView.setVisibility(View.GONE);
+    }
+
+    @Override
+    public boolean onTap(final MotionEvent e)
+    {
+        if (m_ToggleNavbarListener != null)
+        {
+            m_ToggleNavbarListener.ToggleNavbar();
+            return true;
+        }
+
+        return false;
     }
 
     @Override
@@ -230,10 +251,5 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     public void JumpFromTOC(final String heading)
     {
         m_PDFView.jumpTo(m_HeadingsToPageNumber.get(heading));
-    }
-
-    public void MoveRelativeTo(float x, float y)
-    {
-        m_PDFView.moveRelativeTo(x, y);
     }
 }
