@@ -57,6 +57,7 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     private OnToggleNavbarListener          m_ToggleNavbarListener;
 
     private boolean                         m_NextClickEventOnPDFIsLink;
+    private boolean                         m_PageHighlightsAreLoaded;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
@@ -103,7 +104,28 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
                     .swipeHorizontal(false)
                     .enableDoubletap(true)
                     .defaultPage(defaultPage)
-                    //.onDraw(this) // allows to draw something on the current page, usually visible in the middle of the screen
+                    .onDraw(new OnDrawListener()
+                    {
+                        @Override
+                        public void onLayerDrawn(final Canvas canvas, final float pageWidth, final float pageHeight, final int displayedPage)
+                        {
+                            if (m_CurrentSearch.length() > 0)
+                            {
+                                if (m_PageHighlightsAreLoaded)
+                                {
+                                    m_HighlightInfoView.setText(String.format("Visar resultat för \"%s\".", m_CurrentSearch));
+                                    m_HighlightInfoContainerView.setVisibility(View.VISIBLE);
+                                }
+                                else
+                                {
+                                    m_HighlightInfoView.setText(String.format("Laddar resultat för \"%s\"...", m_CurrentSearch));
+                                    m_HighlightInfoContainerView.setVisibility(View.VISIBLE);
+
+                                    m_PageHighlightsAreLoaded = true;
+                                }
+                            }
+                        }
+                    }) // allows to draw something on the current page, usually visible in the middle of the screen
                     .onDrawAll(this) // allows to draw something on all pages, separately for every page. Called only for visible pages
                     .onLoad(this) // called after document is loaded and starts to be rendered
                     //.onPageChange(this)
@@ -161,7 +183,7 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
                     PageHighlights pageHighlights = m_HighlightsPerPage.get(integerArrayListPair.first);
 
                     pageHighlights.SetIsDirty(false);
-                    pageHighlights.SetHighlights(integerArrayListPair.second);
+                    pageHighlights.SetHighlights(new ArrayList<RectF>(integerArrayListPair.second));
                 }
             }, p);
         }
@@ -216,15 +238,17 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
     @Override
     public void onLayerDrawn(final Canvas canvas, final float pageWidth, final float pageHeight, final int displayedPage)
     {
+        //For some reason PDFViewer always tries to draw page 0, we check for this here
+        final int currentPage = m_PDFView.getCurrentPage();
+        if (Math.abs(displayedPage - currentPage) > 1)
+            return;
+
         if (m_CurrentSearch.length() > 0)
         {
             final PageHighlights pageHighlights = m_HighlightsPerPage.get(displayedPage);
 
             if (!pageHighlights.IsDirty())
             {
-                m_HighlightInfoView.setText(String.format("Visar Resultat för \"%s\"", m_CurrentSearch));
-                m_HighlightInfoContainerView.setVisibility(View.VISIBLE);
-
                 for (RectF rect : pageHighlights.GetHighlights())
                 {
                     float relativeX = rect.left * pageWidth;
@@ -239,8 +263,7 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
             }
             else
             {
-                m_HighlightInfoView.setText(String.format("Laddar Resultat för \"%s\"...", m_CurrentSearch));
-                m_HighlightInfoContainerView.setVisibility(View.VISIBLE);
+                m_PageHighlightsAreLoaded = false;
             }
         }
     }
