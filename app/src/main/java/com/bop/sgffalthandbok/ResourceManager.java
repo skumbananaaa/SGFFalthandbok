@@ -80,9 +80,6 @@ public class ResourceManager extends AndroidViewModel
 
         m_Videos = new ArrayList<>(10);
 
-        //Kap 3
-        m_Videos.add(new VideoData("Film", "SGFs Geofysikfilm", "5e7yiEa5CK4"));
-
         //Kap 7
         m_Videos.add(new VideoData("Instruktionsvideo", "Spetstrycksondering", "NbhLCYSIojk"));
         m_Videos.add(new VideoData("Instruktionsvideo", "Jord-Bergsondering", "tbrlP-vvgT4"));
@@ -97,6 +94,7 @@ public class ResourceManager extends AndroidViewModel
 
         //Kap 9
         m_Videos.add(new VideoData("Instruktionsvideo", "Vingförsök", "aoTHVICJHTQ"));
+        m_Videos.add(new VideoData("Film", "SGFs Geofysikfilm", "5e7yiEa5CK4"));
 
         if (!LoadDocumentsAsByteArray(getApplication().getAssets()))
             return;
@@ -252,56 +250,56 @@ public class ResourceManager extends AndroidViewModel
                     String subHeadingTitle = currentSubHeading.getTitle();
                     subHeadings.add(subHeadingTitle);
 
-                    if (subHeadingTitle.equals("3.2 Geofysiska metoder"))
+                    if (subHeadingTitle.equals("7.2 Spetstrycksondering, CPT och CPTU"))
                     {
                         VideoData videoData = m_Videos.get(0);
                         subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
                     }
-                    else if (subHeadingTitle.equals("7.2 Spetstrycksondering, CPT och CPTU"))
+                    else if (subHeadingTitle.equals("7.3 Jord-Bergsondering"))
                     {
                         VideoData videoData = m_Videos.get(1);
                         subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
                     }
-                    else if (subHeadingTitle.equals("7.3 Jord-Bergsondering"))
+                    else if (subHeadingTitle.equals("7.4 Hejarsondering"))
                     {
                         VideoData videoData = m_Videos.get(2);
                         subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
                     }
-                    else if (subHeadingTitle.equals("7.4 Hejarsondering"))
+                    else if (subHeadingTitle.equals("7.5 Viktsondering"))
                     {
                         VideoData videoData = m_Videos.get(3);
                         subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
                     }
-                    else if (subHeadingTitle.equals("7.5 Viktsondering"))
-                    {
-                        VideoData videoData = m_Videos.get(4);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
-                    }
                     else if (subHeadingTitle.equals("7.6 Mekanisk trycksondering"))
                     {
-                        VideoData videoData = m_Videos.get(5);
+                        VideoData videoData = m_Videos.get(4);
                         subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
                     }
                     else if (subHeadingTitle.equals("8.3 Ostörd provtagning"))
                     {
                         //St I och St II
-                        VideoData videoData0 = m_Videos.get(6);
+                        VideoData videoData0 = m_Videos.get(5);
                         subHeadings.add(videoData0.Prefix + ": " + videoData0.VideoName);
-                        VideoData videoData1 = m_Videos.get(7);
+                        VideoData videoData1 = m_Videos.get(6);
                         subHeadings.add(videoData1.Prefix + ": " + videoData1.VideoName);
                     }
                     else if (subHeadingTitle.equals("8.4 Störd provtagning"))
                     {
-                        VideoData videoData = m_Videos.get(8);
+                        VideoData videoData = m_Videos.get(7);
                         subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
                     }
                     else if (subHeadingTitle.equals("9.6 Fältvingförsök"))
+                    {
+                        VideoData videoData = m_Videos.get(8);
+                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                    }
+                    else if (subHeadingTitle.equals("9.11 Geofysiska metoder"))
                     {
                         VideoData videoData = m_Videos.get(9);
                         subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
                     }
 
-                    currentSubHeading = currentSubHeading.getNextSibling();
+                        currentSubHeading = currentSubHeading.getNextSibling();
                 }
 
                 String headingTitle = currentHeading.getTitle();

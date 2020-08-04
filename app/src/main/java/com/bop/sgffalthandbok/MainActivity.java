@@ -164,7 +164,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     @Override
     public boolean onNavigationItemSelected(@NonNull final MenuItem item)
     {
-        FragmentType nextFragmentType;
+        FragmentType nextFragmentType = null;
 
         if (m_NextNavEventIsBack)
         {
@@ -175,11 +175,12 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         }
         else
         {
+            //m_NextFragmentType is only set manually, not by the navmenu
             if (m_NextFragmentType != FragmentType.NONE)
             {
                 nextFragmentType    = m_NextFragmentType;
             }
-            else
+            else if (m_BottomNavigationVisible)
             {
                 switch (item.getItemId())
                 {
@@ -189,6 +190,12 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                     default:
                         return false;
                 }
+            }
+            else
+            {
+                ToggleNavbar();
+                m_NextFragmentType      = FragmentType.NONE;
+                return false;
             }
 
             if (nextFragmentType == m_CurrentFragmentType)
@@ -201,6 +208,11 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             {
                 m_FragmentStack.push(new SerializablePair<Integer, FragmentType>(m_BottomNavigationView.getSelectedItemId(), m_CurrentFragmentType));
             }
+        }
+
+        if (m_CurrentFragmentType == FragmentType.VIDEO)
+        {
+            m_YouTubePlayer.pause();
         }
 
         m_NextFragmentType      = FragmentType.NONE;
