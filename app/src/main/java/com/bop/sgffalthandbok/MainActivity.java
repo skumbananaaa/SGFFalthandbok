@@ -25,7 +25,7 @@ import com.google.android.youtube.player.YouTubePlayerFragmentX;
 
 import java.util.Stack;
 
-public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, ContentFragment.OnHeadingSelectedListener, CustomLinkHandler.OnVideoLinkSelectedListener, SearchFragment.OnSearchResultSelectedListener, YouTubePlayer.OnInitializedListener, OnToggleNavbarListener
+public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, ContentFragment.OnHeadingSelectedListener, ContentFragment.OnVideoSelectedListener, CustomLinkHandler.OnVideoLinkSelectedListener, SearchFragment.OnSearchResultSelectedListener, YouTubePlayer.OnInitializedListener, OnToggleNavbarListener
 {
     enum FragmentType
     {
@@ -231,7 +231,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
                 ConstraintSet constraintSet = new ConstraintSet();
                 constraintSet.clone(m_MainConstraintLayout);
-                constraintSet.connect(R.id.frameLayoutFragment, ConstraintSet.BOTTOM, R.id.mainLayout, ConstraintSet.BOTTOM);
+                constraintSet.connect(R.id.frameLayoutFragment, ConstraintSet.BOTTOM, R.id.bottomNavigation, ConstraintSet.TOP);
                 constraintSet.applyTo(m_MainConstraintLayout);
 
                 if (!m_BottomNavigationVisible)
@@ -289,7 +289,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
                 ConstraintSet constraintSet = new ConstraintSet();
                 constraintSet.clone(m_MainConstraintLayout);
-                constraintSet.connect(R.id.frameLayoutFragment, ConstraintSet.BOTTOM, R.id.mainLayout, ConstraintSet.BOTTOM);
+                constraintSet.connect(R.id.frameLayoutFragment, ConstraintSet.BOTTOM, R.id.bottomNavigation, ConstraintSet.TOP);
                 constraintSet.applyTo(m_MainConstraintLayout);
 
                 if (!m_BottomNavigationVisible)
@@ -311,9 +311,9 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     }
 
     @Override
-    public void OnVideoLinkSelected(final String video)
+    public void OnVideoLinkSelected(final String videoName)
     {
-        String videoURI = m_ResourceManager.GetURIIfVideo(video);
+        String videoURI = m_ResourceManager.GetURIIfVideo(videoName);
 
         if (videoURI.length() > 0)
         {
@@ -325,29 +325,26 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     }
 
     @Override
+    public void OnVideoSelected(final String uri)
+    {
+        m_NextFragmentType = FragmentType.VIDEO;
+        m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
+
+        m_YouTubePlayer.loadVideo(uri);
+    }
+
+    @Override
     public void OnHeadingSelected(final String heading)
     {
-        String videoURI = m_ResourceManager.GetURIIfVideo(heading);
-
-        if (videoURI.length() > 0)
+        try
         {
-            m_NextFragmentType = FragmentType.VIDEO;
+            m_DocumentFragment.JumpFromTOC(heading);
+            m_NextFragmentType = FragmentType.DOCUMENT;
             m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
-
-            m_YouTubePlayer.loadVideo(videoURI);
         }
-        else
+        catch (NullPointerException e)
         {
-            try
-            {
-                m_DocumentFragment.JumpFromTOC(heading);
-                m_NextFragmentType = FragmentType.DOCUMENT;
-                m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
-            }
-            catch (NullPointerException e)
-            {
-                Log.e("SGF Fälthandbok", "Exception thrown while jumping to heading " + heading + "...", e);
-            }
+            Log.e("SGF Fälthandbok", "Exception thrown while jumping to heading " + heading + "...", e);
         }
     }
 

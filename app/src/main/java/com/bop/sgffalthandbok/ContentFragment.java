@@ -5,6 +5,7 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -13,25 +14,32 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ExpandableListView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.google.android.material.textview.MaterialTextView;
 
 import java.util.ArrayList;
 
-public class ContentFragment extends Fragment implements AdapterView.OnItemClickListener
+public class ContentFragment extends Fragment
 {
-    private ArrayList<SerializablePair<String, ArrayList<String>>>  m_TableOfContents;
+    private ArrayList<ContentHeading>   m_TableOfContents;
 
-    private ListView                m_ListView;
-    private ArrayAdapter<String>    m_ListAdapter;
-    private ArrayList<String>       m_Headings;
+    private ExpandableListView          m_ListView;
+    private ContentAdapter              m_ContentAdapter;
 
-    private OnHeadingSelectedListener   m_Listener;
+    private OnHeadingSelectedListener   m_OnHeadingSelectedListener;
+    private OnVideoSelectedListener     m_OnVideoSelectedListener;
 
     public interface OnHeadingSelectedListener
     {
         public void OnHeadingSelected(String heading);
+    }
+
+    public interface OnVideoSelectedListener
+    {
+        public void OnVideoSelected(String uri);
     }
 
     @Override
@@ -40,17 +48,25 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
         super.onAttach(context);
         try
         {
-            m_Listener = (OnHeadingSelectedListener)context;
+            m_OnHeadingSelectedListener = (OnHeadingSelectedListener)context;
         }
         catch (ClassCastException e)
         {
             throw new ClassCastException(context.toString() + " must implement OnHeadingSelectedListener");
         }
+
+        try
+        {
+            m_OnVideoSelectedListener = (OnVideoSelectedListener)context;
+        }
+        catch (ClassCastException e)
+        {
+            throw new ClassCastException(context.toString() + " must implement OnVideoSelectedListener");
+        }
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState)
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
     {
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_content, container, false);
@@ -65,35 +81,35 @@ public class ContentFragment extends Fragment implements AdapterView.OnItemClick
 
         m_TableOfContents = resourceManager.GetTableOfContents();
 
-        m_Headings = new ArrayList<>();
-
+        m_ContentAdapter = new ContentAdapter(getContext(), m_TableOfContents);
         m_ListView = view.findViewById(R.id.contentList);
-        m_ListAdapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, m_Headings);
-        m_ListView.setAdapter(m_ListAdapter);
+        m_ListView.setAdapter(m_ContentAdapter);
 
-        for (SerializablePair<String, ArrayList<String>> chapter : m_TableOfContents)
+        m_ListView.setOnChildClickListener(new ExpandableListView.OnChildClickListener()
         {
-            m_ListAdapter.add(chapter.first);
-
-            for (String subHeading : chapter.second)
+            @Override
+            public boolean onChildClick(final ExpandableListView parent, final View v, final int groupPosition, final int childPosition, final long id)
             {
-                m_ListAdapter.add("\t\t" + subHeading);
+                final ContentSubHeading clickedChild = m_TableOfContents.get(groupPosition).GetChild(childPosition);
+
+                switch (clickedChild.GetType())
+                {
+                    case SUBHEADING:
+                    {
+                        m_OnHeadingSelectedListener.OnHeadingSelected(clickedChild.GetText().replaceAll("\\s+", ""));
+                        break;
+                    }
+
+                    case VIDEO:
+                    {
+                        m_OnVideoSelectedListener.OnVideoSelected(clickedChild.GetMetadata());
+                        break;
+                    }
+                }
+
+                return false;
             }
-        }
+        });
 
-        m_ListView.setOnItemClickListener(this);
-    }
-
-    @Override
-    public void onItemClick(final AdapterView<?> parent, final View view, final int position, final long id)
-    {
-        MaterialTextView clickedView = (MaterialTextView)view;
-        String clickedText = clickedView.getText().toString();
-
-        clickedText = clickedText.replaceAll("Film:", "");
-        clickedText = clickedText.replaceAll("Instruktionsvideo:", "");
-        clickedText = clickedText.replaceAll("\\s+", "");
-
-        m_Listener.OnHeadingSelected(clickedText);
     }
 }

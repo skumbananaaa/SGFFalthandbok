@@ -46,7 +46,7 @@ public class ResourceManager extends AndroidViewModel
     private ArrayList<String>                                                m_DocumentTextPages;                 //Contains all Pages in Text Format
     private HashMap<String, Integer>                                         m_HeadingsToPageNumber;              //Contains Key-Value Pairs of a Heading (with Separators removed) to a Page Number
     private HashMap<Integer, ArrayList<SerializablePair<Integer, String>>>   m_PageNumberToHeadings;              //Contains Key-Value Pairs of a Page Number which maps to a Sorted Array of CharIndex-Heading Pairs
-    private ArrayList<SerializablePair<String, ArrayList<String>>>           m_TableOfContents;                   //Contains String-Array Pairs where the String is a Main Heading and the Array contains Subheadings
+    private ArrayList<ContentHeading>                                        m_TableOfContents;                   //Contains String-Array Pairs where the String is a Main Heading and the Array contains Subheadings
     private ArrayList<VideoData>                                             m_Videos;
 
     private ArrayList<MutableLiveData<Pair<Integer, ArrayList<RectF>>>>      m_PageHighlights;
@@ -237,7 +237,7 @@ public class ResourceManager extends AndroidViewModel
             while (currentHeading != null)
             {
                 //Create new Subheadings Entry
-                ArrayList<String> subHeadings = new ArrayList<>();
+                ArrayList<ContentSubHeading> subHeadings = new ArrayList<>();
                 AddHeadingData(currentHeading, m_PDFDocument, documentCatalog);
 
                 //Loop through Chapter Subheadings
@@ -248,55 +248,55 @@ public class ResourceManager extends AndroidViewModel
 
                     //Create new Chapter Subheadings
                     String subHeadingTitle = currentSubHeading.getTitle();
-                    subHeadings.add(subHeadingTitle);
+                    subHeadings.add(new ContentSubHeading(subHeadingTitle, ContentSubHeading.Type.SUBHEADING, null));
 
                     if (subHeadingTitle.equals("7.2 Spetstrycksondering, CPT och CPTU"))
                     {
                         VideoData videoData = m_Videos.get(0);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
                     else if (subHeadingTitle.equals("7.3 Jord-Bergsondering"))
                     {
                         VideoData videoData = m_Videos.get(1);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
                     else if (subHeadingTitle.equals("7.4 Hejarsondering"))
                     {
                         VideoData videoData = m_Videos.get(2);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
                     else if (subHeadingTitle.equals("7.5 Viktsondering"))
                     {
                         VideoData videoData = m_Videos.get(3);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
                     else if (subHeadingTitle.equals("7.6 Mekanisk trycksondering"))
                     {
                         VideoData videoData = m_Videos.get(4);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
                     else if (subHeadingTitle.equals("8.3 Ostörd provtagning"))
                     {
                         //St I och St II
                         VideoData videoData0 = m_Videos.get(5);
-                        subHeadings.add(videoData0.Prefix + ": " + videoData0.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData0.Prefix + ": " + videoData0.VideoName, ContentSubHeading.Type.VIDEO, videoData0.URI));
                         VideoData videoData1 = m_Videos.get(6);
-                        subHeadings.add(videoData1.Prefix + ": " + videoData1.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData1.Prefix + ": " + videoData1.VideoName, ContentSubHeading.Type.VIDEO, videoData1.URI));
                     }
                     else if (subHeadingTitle.equals("8.4 Störd provtagning"))
                     {
                         VideoData videoData = m_Videos.get(7);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
                     else if (subHeadingTitle.equals("9.6 Fältvingförsök"))
                     {
                         VideoData videoData = m_Videos.get(8);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
                     else if (subHeadingTitle.equals("9.11 Geofysiska metoder"))
                     {
                         VideoData videoData = m_Videos.get(9);
-                        subHeadings.add(videoData.Prefix + ": " + videoData.VideoName);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
 
                         currentSubHeading = currentSubHeading.getNextSibling();
@@ -304,7 +304,7 @@ public class ResourceManager extends AndroidViewModel
 
                 String headingTitle = currentHeading.getTitle();
 
-                m_TableOfContents.add(new SerializablePair<>(headingTitle, subHeadings));
+                m_TableOfContents.add(new ContentHeading(headingTitle, subHeadings));
                 currentHeading = currentHeading.getNextSibling();
             }
         }
@@ -367,7 +367,7 @@ public class ResourceManager extends AndroidViewModel
         return m_PageNumberToHeadings;
     }
 
-    public ArrayList<SerializablePair<String, ArrayList<String>>> GetTableOfContents()
+    public ArrayList<ContentHeading> GetTableOfContents()
     {
         return m_TableOfContents;
     }

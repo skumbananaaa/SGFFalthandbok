@@ -19,7 +19,7 @@ public class CustomLinkHandler implements LinkHandler
 
     public interface OnVideoLinkSelectedListener
     {
-        void OnVideoLinkSelected(String video);
+        void OnVideoLinkSelected(String videoName);
     }
 
     public interface OnLinkConfirmedListener
