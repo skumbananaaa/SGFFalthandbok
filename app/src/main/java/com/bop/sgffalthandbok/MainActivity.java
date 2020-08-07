@@ -11,9 +11,12 @@ import androidx.lifecycle.ViewModelProvider;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
+import android.view.DragEvent;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
@@ -36,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         SEARCH
     };
 
-    private static String   YOUTUBE_API_KEY             = "AIzaSyAmJzQA4wHYuiONkLKF-W89ZZRDRF9nqlY";
+    private static String YOUTUBE_API_KEY             = "QUl6YVN5QW1KelFBNHdIWXVpT05rTEtGLVc4OVpaUkRSRjlucWxZ";
 
     private FragmentManager         m_FragmentManager;
     private YouTubePlayer           m_YouTubePlayer;
@@ -108,7 +111,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             m_DocumentFragment  = (DocumentFragment) m_FragmentManager.findFragmentByTag("Document");
             m_SearchFragment    = (SearchFragment) m_FragmentManager.findFragmentByTag("Search");
 
-            m_VideoFragment.initialize(YOUTUBE_API_KEY, this);
+            m_VideoFragment.initialize(new String(Base64.decode(YOUTUBE_API_KEY, Base64.DEFAULT)), this);
 
             m_BottomNavigationView.setSelectedItemId(savedInstanceState.getInt("SELECTED_NAV_ITEM"));
         }
@@ -124,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             m_DocumentFragment  = new DocumentFragment();
             m_SearchFragment    = new SearchFragment();
 
-            m_VideoFragment.initialize(YOUTUBE_API_KEY, this);
+            m_VideoFragment.initialize(new String(Base64.decode(YOUTUBE_API_KEY, Base64.DEFAULT)), this);
 
             FragmentTransaction fragmentTransaction = m_FragmentManager.beginTransaction();
             fragmentTransaction.add(R.id.frameLayoutFragment, m_ContentFragment, "Content");
@@ -201,6 +204,10 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             if (nextFragmentType == m_CurrentFragmentType)
             {
                 m_NextFragmentType      = FragmentType.NONE;
+
+                if (m_CurrentFragmentType == FragmentType.DOCUMENT)
+                    m_DocumentFragment.Jump(0);
+
                 return false;
             }
 
@@ -407,6 +414,26 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             TranslateAnimation animation = new TranslateAnimation(0.0f, 0.0f, 0.0f, m_BottomNavigationView.getHeight());
             animation.setDuration(500);
             animation.setFillAfter(true);
+            animation.setAnimationListener(new Animation.AnimationListener()
+            {
+                @Override
+                public void onAnimationStart(final Animation animation)
+                {
+
+                }
+
+                @Override
+                public void onAnimationEnd(final Animation animation)
+                {
+                    m_BottomNavigationView.setElevation(-1.0f);
+                }
+
+                @Override
+                public void onAnimationRepeat(final Animation animation)
+                {
+
+                }
+            });
 
             m_BottomNavigationView.startAnimation(animation);
         }
@@ -419,6 +446,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             animation.setFillAfter(true);
 
             m_BottomNavigationView.startAnimation(animation);
+            m_BottomNavigationView.setElevation(1.0f);
         }
     }
 }

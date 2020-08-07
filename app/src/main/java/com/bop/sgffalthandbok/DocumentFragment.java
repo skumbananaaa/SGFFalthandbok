@@ -17,23 +17,21 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.github.barteksc.pdfviewer.PDFView;
-import com.github.barteksc.pdfviewer.link.DefaultLinkHandler;
 import com.github.barteksc.pdfviewer.listener.OnDrawListener;
 import com.github.barteksc.pdfviewer.listener.OnLoadCompleteListener;
-import com.github.barteksc.pdfviewer.listener.OnTapListener;
 import com.github.barteksc.pdfviewer.util.FitPolicy;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import static com.bop.sgffalthandbok.ResourceManager.DOCUMENT_START_PAGE_INDEX;
 import static com.bop.sgffalthandbok.SearchFragment.MIN_SEARCH_STRING_LENGTH;
 
 public class DocumentFragment extends Fragment implements OnLoadCompleteListener, OnDrawListener, View.OnClickListener, CustomLinkHandler.OnLinkConfirmedListener
@@ -98,8 +96,14 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
 
         if (m_PDFView != null)
         {
+            int numberOfActualPages = m_PDFDocument.getNumberOfPages() - DOCUMENT_START_PAGE_INDEX;
+            int[] pages = new int[numberOfActualPages];
+
+            for (int i = 0; i < numberOfActualPages; i++)
+                pages[i] = DOCUMENT_START_PAGE_INDEX + i;
+
             m_PDFView.fromBytes(m_DocumentByteArr)
-                    //.pages(0, 2, 1, 3, 3, 3) // all pages are displayed by default
+                    .pages(pages) // all pages are displayed by default
                     .enableSwipe(true) // allows to block changing pages using swipe
                     .swipeHorizontal(false)
                     .enableDoubletap(true)
@@ -180,10 +184,13 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
                 @Override
                 public void onChanged(final Pair<Integer, ArrayList<RectF>> integerArrayListPair)
                 {
-                    PageHighlights pageHighlights = m_HighlightsPerPage.get(integerArrayListPair.first);
+                    if (integerArrayListPair.first >= DOCUMENT_START_PAGE_INDEX)
+                    {
+                        PageHighlights pageHighlights = m_HighlightsPerPage.get(integerArrayListPair.first - DOCUMENT_START_PAGE_INDEX);
 
-                    pageHighlights.SetIsDirty(false);
-                    pageHighlights.SetHighlights(new ArrayList<RectF>(integerArrayListPair.second));
+                        pageHighlights.SetIsDirty(false);
+                        pageHighlights.SetHighlights(new ArrayList<RectF>(integerArrayListPair.second));
+                    }
                 }
             }, p);
         }
@@ -275,18 +282,24 @@ public class DocumentFragment extends Fragment implements OnLoadCompleteListener
             m_CurrentSearch = searchString;
             m_PDFView.jumpTo(pageIndex);
 
-            for (int p = 0; p < m_PDFDocument.getNumberOfPages(); p++)
+            final int numberOfPages = m_PDFView.getPageCount();
+            for (int p = 0; p < numberOfPages; p++)
             {
                 PageHighlights pageHighlights =  m_HighlightsPerPage.get(p);
                 pageHighlights.SetIsDirty(true);
             }
 
-            m_ResourceManager.UpdateBookHighlights(m_CurrentSearch, pageIndex);
+            m_ResourceManager.UpdateBookHighlights(m_CurrentSearch, DOCUMENT_START_PAGE_INDEX + pageIndex);
         }
     }
 
     public void JumpFromTOC(final String heading)
     {
-        m_PDFView.jumpTo(m_HeadingsToPageNumber.get(heading));
+        m_PDFView.jumpTo(m_HeadingsToPageNumber.get(heading) - DOCUMENT_START_PAGE_INDEX);
+    }
+
+    public void Jump(final int pageIndex)
+    {
+        m_PDFView.jumpTo(pageIndex);
     }
 }

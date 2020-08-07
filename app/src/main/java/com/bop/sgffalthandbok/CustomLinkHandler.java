@@ -87,6 +87,7 @@ public class CustomLinkHandler implements LinkHandler
 
     private void handlePage(int page)
     {
-        m_PDFView.jumpTo(page);
+        if (page >= ResourceManager.DOCUMENT_START_PAGE_INDEX)
+            m_PDFView.jumpTo(page - ResourceManager.DOCUMENT_START_PAGE_INDEX);
     }
 }

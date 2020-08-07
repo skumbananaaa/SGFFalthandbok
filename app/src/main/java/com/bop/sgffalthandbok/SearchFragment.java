@@ -144,14 +144,13 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
     private void PerformSearch()
     {
         Locale swedishLocale = new Locale("sv", "SE");
-        ArrayList<SerializablePair<Integer, Integer>> matchedCharactedIndices = new ArrayList<SerializablePair<Integer, Integer>>();
         m_SearchResults.clear();
 
         if (m_SearchString.length() > MIN_SEARCH_STRING_LENGTH)
         {
             m_ErrorTextView.setVisibility(View.INVISIBLE);
 
-            for (int pageIndex = 0; pageIndex < m_DocumentTextPages.size(); pageIndex++)
+            for (int pageIndex = ResourceManager.DOCUMENT_START_PAGE_INDEX + ResourceManager.DOCUMENT_CONTENT_OFFSET; pageIndex < m_DocumentTextPages.size(); pageIndex++)
             {
                 String page = m_DocumentTextPages.get(pageIndex);
 
@@ -173,8 +172,7 @@ public class SearchFragment extends Fragment implements TextView.OnEditorActionL
 
                             skipHits = DuplicatesInSampleTextCount(sampleText, m_SearchString);
 
-                            m_SearchResults.add(new SearchResult(title, sampleText, pageIndex));
-                            matchedCharactedIndices.add(new SerializablePair(pageIndex, foundIndex));
+                            m_SearchResults.add(new SearchResult(title, sampleText, pageIndex - ResourceManager.DOCUMENT_START_PAGE_INDEX));
                         }
                         else
                         {

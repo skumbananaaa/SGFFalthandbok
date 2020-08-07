@@ -30,6 +30,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +39,9 @@ import java.util.concurrent.Executors;
 
 public class ResourceManager extends AndroidViewModel
 {
+    public static int       DOCUMENT_START_PAGE_INDEX   = 5;
+    public static int       DOCUMENT_CONTENT_OFFSET     = 4; //Describes the number of pages from DOCUMENT_START_PAGE_INDEX where the actual content starts
+
     private static String   DOCUMENT_FILENAME           = "Geobok 181026 Bok.pdf";
     private static String   DOCUMENT_JSON_FILENAME      = "Geobok 181026 Bok.json";
 
@@ -80,6 +84,9 @@ public class ResourceManager extends AndroidViewModel
 
         m_Videos = new ArrayList<>(10);
 
+        //Kap 3
+        m_Videos.add(new VideoData("Film", "SGFs Geofysikfilm", "5e7yiEa5CK4"));
+
         //Kap 7
         m_Videos.add(new VideoData("Instruktionsvideo", "Spetstrycksondering", "NbhLCYSIojk"));
         m_Videos.add(new VideoData("Instruktionsvideo", "Jord-Bergsondering", "tbrlP-vvgT4"));
@@ -94,7 +101,6 @@ public class ResourceManager extends AndroidViewModel
 
         //Kap 9
         m_Videos.add(new VideoData("Instruktionsvideo", "Vingförsök", "aoTHVICJHTQ"));
-        m_Videos.add(new VideoData("Film", "SGFs Geofysikfilm", "5e7yiEa5CK4"));
 
         if (!LoadDocumentsAsByteArray(getApplication().getAssets()))
             return;
@@ -118,7 +124,7 @@ public class ResourceManager extends AndroidViewModel
     private boolean LoadDocumentsAsByteArray(final AssetManager assetManager)
     {
         {
-            InputStream inputStream = null;
+            InputStream inputStream;
             try
             {
                 inputStream = assetManager.open(DOCUMENT_FILENAME);
@@ -187,8 +193,8 @@ public class ResourceManager extends AndroidViewModel
 
     private boolean LoadDocumentTextPages(final AssetManager assetManager)
     {
-        InputStream inputStream = null;
-        byte[] buffer = null;
+        InputStream inputStream;
+        byte[] buffer;
 
         try
         {
@@ -207,7 +213,7 @@ public class ResourceManager extends AndroidViewModel
 
         try
         {
-            JSONObject jsonObject = new JSONObject(new String(buffer, "UTF-8"));
+            JSONObject jsonObject = new JSONObject(new String(buffer, StandardCharsets.UTF_8));
             final JSONArray pages = jsonObject.getJSONArray("pages");
 
             for (int p = 0; p < pages.length(); p++)
@@ -215,7 +221,7 @@ public class ResourceManager extends AndroidViewModel
                 m_DocumentTextPages.add(pages.getString(p).toLowerCase());
             }
         }
-        catch (JSONException | UnsupportedEncodingException e)
+        catch (JSONException e)
         {
             Log.e("SGF Fälthandbok", "Exception thrown while parsing json file...", e);
             return false;
@@ -226,8 +232,6 @@ public class ResourceManager extends AndroidViewModel
 
     private boolean LoadDocumentContentDescriptions()
     {
-        String parsedText = null;
-
         try
         {
             //Load ToC
@@ -250,50 +254,50 @@ public class ResourceManager extends AndroidViewModel
                     String subHeadingTitle = currentSubHeading.getTitle();
                     subHeadings.add(new ContentSubHeading(subHeadingTitle, ContentSubHeading.Type.SUBHEADING, null));
 
-                    if (subHeadingTitle.equals("7.2 Spetstrycksondering, CPT och CPTU"))
+                    if (subHeadingTitle.equals("3.2 Geofysiska metoder"))
                     {
                         VideoData videoData = m_Videos.get(0);
                         subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
-                    else if (subHeadingTitle.equals("7.3 Jord-Bergsondering"))
+                    else if (subHeadingTitle.equals("7.2 Spetstrycksondering, CPT och CPTU"))
                     {
                         VideoData videoData = m_Videos.get(1);
                         subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
-                    else if (subHeadingTitle.equals("7.4 Hejarsondering"))
+                    else if (subHeadingTitle.equals("7.3 Jord-Bergsondering"))
                     {
                         VideoData videoData = m_Videos.get(2);
                         subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
-                    else if (subHeadingTitle.equals("7.5 Viktsondering"))
+                    else if (subHeadingTitle.equals("7.4 Hejarsondering"))
                     {
                         VideoData videoData = m_Videos.get(3);
                         subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
-                    else if (subHeadingTitle.equals("7.6 Mekanisk trycksondering"))
+                    else if (subHeadingTitle.equals("7.5 Viktsondering"))
                     {
                         VideoData videoData = m_Videos.get(4);
+                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
+                    }
+                    else if (subHeadingTitle.equals("7.6 Mekanisk trycksondering"))
+                    {
+                        VideoData videoData = m_Videos.get(5);
                         subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
                     else if (subHeadingTitle.equals("8.3 Ostörd provtagning"))
                     {
                         //St I och St II
-                        VideoData videoData0 = m_Videos.get(5);
+                        VideoData videoData0 = m_Videos.get(6);
                         subHeadings.add(new ContentSubHeading(videoData0.Prefix + ": " + videoData0.VideoName, ContentSubHeading.Type.VIDEO, videoData0.URI));
-                        VideoData videoData1 = m_Videos.get(6);
+                        VideoData videoData1 = m_Videos.get(7);
                         subHeadings.add(new ContentSubHeading(videoData1.Prefix + ": " + videoData1.VideoName, ContentSubHeading.Type.VIDEO, videoData1.URI));
                     }
                     else if (subHeadingTitle.equals("8.4 Störd provtagning"))
                     {
-                        VideoData videoData = m_Videos.get(7);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
-                    }
-                    else if (subHeadingTitle.equals("9.6 Fältvingförsök"))
-                    {
                         VideoData videoData = m_Videos.get(8);
                         subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
                     }
-                    else if (subHeadingTitle.equals("9.11 Geofysiska metoder"))
+                    else if (subHeadingTitle.equals("9.6 Fältvingförsök"))
                     {
                         VideoData videoData = m_Videos.get(9);
                         subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
@@ -416,7 +420,7 @@ public class ResourceManager extends AndroidViewModel
             }
         }
 
-        m_PageHighlights.get(pageIndex).postValue(new Pair(pageIndex, m_PageHighlightsWorkspace.get(pageIndex)));
+        m_PageHighlights.get(pageIndex).postValue(new Pair<Integer, ArrayList<RectF>>(pageIndex, m_PageHighlightsWorkspace.get(pageIndex)));
 
         if (m_PageHighlightLoaderService == null)
         {
@@ -486,14 +490,14 @@ public class ResourceManager extends AndroidViewModel
                         PDFTextStripper pdfStripper = new PDFTextStripper()
                         {
                             @Override
-                            protected void writeString(final String text, final List<TextPosition> textPositions) throws IOException
+                            protected void writeString(final String text, final List<TextPosition> textPositions)
                             {
-                                float posXInit = 0;
-                                float posXEnd = 0;
-                                float posYInit = 0;
-                                float posYEnd = 0;
-                                float width = 0;
-                                float height = 0;
+                                float posXInit;
+                                float posXEnd;
+                                float posYInit;
+                                float posYEnd;
+                                float width;
+                                float height;
                                 int searchStringLength = highlightString.length();
                                 String lowerCaseText = text.toLowerCase();
 
@@ -536,7 +540,7 @@ public class ResourceManager extends AndroidViewModel
                     }
 
                     final MutableLiveData<Pair<Integer, ArrayList<RectF>>> currentPageHighlightsLiveData = m_PageHighlights.get(pageIndex);
-                    currentPageHighlightsLiveData.postValue(new Pair(pageIndex, currentPageHighlights));
+                    currentPageHighlightsLiveData.postValue(new Pair<Integer, ArrayList<RectF>>(pageIndex, currentPageHighlights));
                 }
 
                 if (prevCount > afterCount)
@@ -554,14 +558,14 @@ public class ResourceManager extends AndroidViewModel
                             PDFTextStripper pdfStripper = new PDFTextStripper()
                             {
                                 @Override
-                                protected void writeString(final String text, final List<TextPosition> textPositions) throws IOException
+                                protected void writeString(final String text, final List<TextPosition> textPositions)
                                 {
-                                    float posXInit = 0;
-                                    float posXEnd = 0;
-                                    float posYInit = 0;
-                                    float posYEnd = 0;
-                                    float width = 0;
-                                    float height = 0;
+                                    float posXInit;
+                                    float posXEnd;
+                                    float posYInit;
+                                    float posYEnd;
+                                    float width;
+                                    float height;
                                     int searchStringLength = highlightString.length();
                                     String lowerCaseText = text.toLowerCase();
 
@@ -604,7 +608,7 @@ public class ResourceManager extends AndroidViewModel
                         }
 
                         final MutableLiveData<Pair<Integer, ArrayList<RectF>>> currentPageHighlightsLiveData = m_PageHighlights.get(pageIndex);
-                        currentPageHighlightsLiveData.postValue(new Pair(pageIndex, currentPageHighlights));
+                        currentPageHighlightsLiveData.postValue(new Pair<Integer, ArrayList<RectF>>(pageIndex, currentPageHighlights));
                     }
                 }
                 else if (afterCount > prevCount)
@@ -622,14 +626,14 @@ public class ResourceManager extends AndroidViewModel
                             PDFTextStripper pdfStripper = new PDFTextStripper()
                             {
                                 @Override
-                                protected void writeString(final String text, final List<TextPosition> textPositions) throws IOException
+                                protected void writeString(final String text, final List<TextPosition> textPositions)
                                 {
-                                    float posXInit = 0;
-                                    float posXEnd = 0;
-                                    float posYInit = 0;
-                                    float posYEnd = 0;
-                                    float width = 0;
-                                    float height = 0;
+                                    float posXInit;
+                                    float posXEnd;
+                                    float posYInit;
+                                    float posYEnd;
+                                    float width;
+                                    float height;
                                     int searchStringLength = highlightString.length();
                                     String lowerCaseText = text.toLowerCase();
 
@@ -672,7 +676,7 @@ public class ResourceManager extends AndroidViewModel
                         }
 
                         final MutableLiveData<Pair<Integer, ArrayList<RectF>>> currentPageHighlightsLiveData = m_PageHighlights.get(pageIndex);
-                        currentPageHighlightsLiveData.postValue(new Pair(pageIndex, currentPageHighlights));
+                        currentPageHighlightsLiveData.postValue(new Pair<Integer, ArrayList<RectF>>(pageIndex, currentPageHighlights));
                     }
                 }
             }
