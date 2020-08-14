@@ -29,8 +29,14 @@ public class ContentFragment extends Fragment
     private ExpandableListView          m_ListView;
     private ContentAdapter              m_ContentAdapter;
 
+    private OnAboutPageSelectedListener m_OnAboutPageSelectedListener;
     private OnHeadingSelectedListener   m_OnHeadingSelectedListener;
     private OnVideoSelectedListener     m_OnVideoSelectedListener;
+
+    public interface OnAboutPageSelectedListener
+    {
+        public void OnAboutPageSelected();
+    }
 
     public interface OnHeadingSelectedListener
     {
@@ -46,6 +52,16 @@ public class ContentFragment extends Fragment
     public void onAttach(@NonNull final Context context)
     {
         super.onAttach(context);
+
+        try
+        {
+            m_OnAboutPageSelectedListener = (OnAboutPageSelectedListener)context;
+        }
+        catch (ClassCastException e)
+        {
+            throw new ClassCastException(context.toString() + " must implement OnAboutPageSelectedListener");
+        }
+
         try
         {
             m_OnHeadingSelectedListener = (OnHeadingSelectedListener)context;
@@ -85,6 +101,37 @@ public class ContentFragment extends Fragment
         m_ListView = view.findViewById(R.id.contentList);
         m_ListView.setAdapter(m_ContentAdapter);
 
+        m_ListView.setOnGroupClickListener(new ExpandableListView.OnGroupClickListener()
+        {
+            @Override
+            public boolean onGroupClick(final ExpandableListView parent, final View v, final int groupPosition, final long id)
+            {
+                final ContentHeading clickedHeading = m_TableOfContents.get(groupPosition);
+
+                switch (clickedHeading.GetType())
+                {
+                    case HEADING:
+                    {
+                        if (clickedHeading.GetChildrenCount() == 0)
+                        {
+                            m_OnHeadingSelectedListener.OnHeadingSelected(clickedHeading.GetText().replaceAll("\\s+", ""));
+                            return true;
+                        }
+
+                        break;
+                    }
+
+                    case ABOUT:
+                    {
+                        m_OnAboutPageSelectedListener.OnAboutPageSelected();
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        });
+
         m_ListView.setOnChildClickListener(new ExpandableListView.OnChildClickListener()
         {
             @Override
@@ -107,7 +154,7 @@ public class ContentFragment extends Fragment
                     }
                 }
 
-                return false;
+                return true;
             }
         });
 

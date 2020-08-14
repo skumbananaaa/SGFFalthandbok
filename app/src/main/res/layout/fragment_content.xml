@@ -12,10 +12,13 @@
         android:layout_height="match_parent"
         android:divider="@android:color/darker_gray"
         android:dividerHeight="0.5dp"
-        android:indicatorStart="?android:attr/expandableListPreferredItemIndicatorLeft"
+        android:groupIndicator="@android:color/transparent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        />
+
+    <!-- android:indicatorStart="?android:attr/expandableListPreferredItemIndicatorLeft" -->
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -14,4 +14,8 @@
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="clearsearch">clearSearch</string>
+    <string name="denna_app_har_skapats_av_bucket_o_pixels">Denna app har skapats av Bucket o\' Pixels.</string>
+    <string name="om">Om</string>
+    <string name="kontaktinformation_klicka_f_r_att_kopiera">Kontaktinformation (klicka för att kopiera):</string>
+    <string name="email_bucketopixelscompany_gmail_com">Email: bucketopixelscompany@gmail.com</string>
 </resources>

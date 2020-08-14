@@ -308,9 +308,11 @@ public class ResourceManager extends AndroidViewModel
 
                 String headingTitle = currentHeading.getTitle();
 
-                m_TableOfContents.add(new ContentHeading(headingTitle, subHeadings));
+                m_TableOfContents.add(new ContentHeading(headingTitle, subHeadings, ContentHeading.Type.HEADING));
                 currentHeading = currentHeading.getNextSibling();
             }
+
+            m_TableOfContents.add(new ContentHeading("Om appen", new ArrayList<ContentSubHeading>(), ContentHeading.Type.ABOUT));
         }
         catch (IOException e)
         {

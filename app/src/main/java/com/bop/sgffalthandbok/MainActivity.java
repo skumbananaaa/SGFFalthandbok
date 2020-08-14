@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
@@ -28,7 +29,7 @@ import com.google.android.youtube.player.YouTubePlayerFragmentX;
 
 import java.util.Stack;
 
-public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, ContentFragment.OnHeadingSelectedListener, ContentFragment.OnVideoSelectedListener, CustomLinkHandler.OnVideoLinkSelectedListener, SearchFragment.OnSearchResultSelectedListener, YouTubePlayer.OnInitializedListener, OnToggleNavbarListener
+public class MainActivity extends AppCompatActivity implements BottomNavigationView.OnNavigationItemSelectedListener, ContentFragment.OnAboutPageSelectedListener, ContentFragment.OnHeadingSelectedListener, ContentFragment.OnVideoSelectedListener, CustomLinkHandler.OnVideoLinkSelectedListener, SearchFragment.OnSearchResultSelectedListener, YouTubePlayer.OnInitializedListener, OnToggleNavbarListener
 {
     enum FragmentType
     {
@@ -36,6 +37,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
         CONTENT,
         VIDEO,
         DOCUMENT,
+        ABOUT,
         SEARCH
     };
 
@@ -56,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
     private ContentFragment         m_ContentFragment;
     private YouTubePlayerFragmentX  m_VideoFragment;
     private DocumentFragment        m_DocumentFragment;
+    private AboutFragment           m_AboutFragment;
     private SearchFragment          m_SearchFragment;
 
     private ResourceManager         m_ResourceManager;
@@ -109,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             m_ContentFragment   = (ContentFragment) m_FragmentManager.findFragmentByTag("Content");
             m_VideoFragment     = (YouTubePlayerFragmentX) m_FragmentManager.findFragmentByTag("Video");
             m_DocumentFragment  = (DocumentFragment) m_FragmentManager.findFragmentByTag("Document");
+            m_AboutFragment     = (AboutFragment) m_FragmentManager.findFragmentByTag("About");
             m_SearchFragment    = (SearchFragment) m_FragmentManager.findFragmentByTag("Search");
 
             m_VideoFragment.initialize(new String(Base64.decode(YOUTUBE_API_KEY, Base64.DEFAULT)), this);
@@ -125,6 +129,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             m_ContentFragment   = new ContentFragment();
             m_VideoFragment     = new YouTubePlayerFragmentX();
             m_DocumentFragment  = new DocumentFragment();
+            m_AboutFragment     = new AboutFragment();
             m_SearchFragment    = new SearchFragment();
 
             m_VideoFragment.initialize(new String(Base64.decode(YOUTUBE_API_KEY, Base64.DEFAULT)), this);
@@ -133,6 +138,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
             fragmentTransaction.add(R.id.frameLayoutFragment, m_ContentFragment, "Content");
             fragmentTransaction.add(R.id.frameLayoutFragment, m_VideoFragment, "Video");
             fragmentTransaction.add(R.id.frameLayoutFragment, m_DocumentFragment, "Document");
+            fragmentTransaction.add(R.id.frameLayoutFragment, m_AboutFragment, "About");
             fragmentTransaction.add(R.id.frameLayoutFragment, m_SearchFragment, "Search");
             fragmentTransaction.commit();
 
@@ -233,6 +239,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                 fragmentTransaction.show(m_ContentFragment);
                 fragmentTransaction.hide(m_VideoFragment);
                 fragmentTransaction.hide(m_DocumentFragment);
+                fragmentTransaction.hide(m_AboutFragment);
                 fragmentTransaction.hide(m_SearchFragment);
                 fragmentTransaction.commit();
 
@@ -254,6 +261,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                 fragmentTransaction.hide(m_ContentFragment);
                 fragmentTransaction.show(m_VideoFragment);
                 fragmentTransaction.hide(m_DocumentFragment);
+                fragmentTransaction.hide(m_AboutFragment);
                 fragmentTransaction.hide(m_SearchFragment);
                 fragmentTransaction.commit();
 
@@ -275,6 +283,7 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
                 fragmentTransaction.hide(m_ContentFragment);
                 fragmentTransaction.hide(m_VideoFragment);
                 fragmentTransaction.show(m_DocumentFragment);
+                fragmentTransaction.hide(m_AboutFragment);
                 fragmentTransaction.hide(m_SearchFragment);
                 fragmentTransaction.commit();
 
@@ -285,12 +294,35 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
                 return true;
             }
+            case ABOUT:
+            {
+                FragmentTransaction fragmentTransaction = m_FragmentManager.beginTransaction();
+                fragmentTransaction.hide(m_ContentFragment);
+                fragmentTransaction.hide(m_VideoFragment);
+                fragmentTransaction.hide(m_DocumentFragment);
+                fragmentTransaction.show(m_AboutFragment);
+                fragmentTransaction.hide(m_SearchFragment);
+                fragmentTransaction.commit();
+
+                ConstraintSet constraintSet = new ConstraintSet();
+                constraintSet.clone(m_MainConstraintLayout);
+                constraintSet.connect(R.id.frameLayoutFragment, ConstraintSet.BOTTOM, R.id.bottomNavigation, ConstraintSet.TOP);
+                constraintSet.applyTo(m_MainConstraintLayout);
+
+                if (!m_BottomNavigationVisible)
+                {
+                    ToggleNavbar();
+                }
+
+                return true;
+            }
             case SEARCH:
             {
                 FragmentTransaction fragmentTransaction = m_FragmentManager.beginTransaction();
                 fragmentTransaction.hide(m_ContentFragment);
                 fragmentTransaction.hide(m_VideoFragment);
                 fragmentTransaction.hide(m_DocumentFragment);
+                fragmentTransaction.hide(m_AboutFragment);
                 fragmentTransaction.show(m_SearchFragment);
                 fragmentTransaction.commit();
 
@@ -329,6 +361,13 @@ public class MainActivity extends AppCompatActivity implements BottomNavigationV
 
             m_YouTubePlayer.loadVideo(videoURI);
         }
+    }
+
+    @Override
+    public void OnAboutPageSelected()
+    {
+        m_NextFragmentType = FragmentType.ABOUT;
+        m_BottomNavigationView.setSelectedItemId(R.id.documentNav);
     }
 
     @Override
