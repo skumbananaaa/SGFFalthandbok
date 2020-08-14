@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 
 /**
@@ -55,9 +56,13 @@ public class AboutFragment extends Fragment
                 @Override
                 public void onClick(final View v)
                 {
+                    final String copyLabel = "Bucket o' Pixels Email";
+                    final String copyText = "bucketopixelscompany@gmail.com";
+
                     ClipboardManager clipboardManager = (ClipboardManager)m_Context.getSystemService(Context.CLIPBOARD_SERVICE);
-                    ClipData clip = ClipData.newPlainText("Bucket o' Pixels Email", "bucketopixelscompany@gmail.com");
+                    ClipData clip = ClipData.newPlainText(copyLabel, copyText);
                     clipboardManager.setPrimaryClip(clip);
+                    Toast.makeText(m_Context, copyLabel + " kopierades" , Toast.LENGTH_SHORT).show();
                 }
             });
         }
