@@ -44,6 +44,7 @@ public class ResourceManager extends AndroidViewModel
 
     private static String   DOCUMENT_FILENAME           = "Geobok 181026 Bok.pdf";
     private static String   DOCUMENT_JSON_FILENAME      = "Geobok 181026 Bok.json";
+    private static String   VIDEOS_JSON_FILENAME        = "Geobok 181026 Videor.json";
 
     private byte[]                                                           m_DocumentByteArr;                   //The entire PDF as a byte array
     private PDDocument                                                       m_PDFDocument;
@@ -59,12 +60,14 @@ public class ResourceManager extends AndroidViewModel
 
     private class VideoData
     {
+        public String ParentSubHeading;
         public String Prefix;
         public String VideoName;
         public String URI;
 
-        VideoData(String prefix, String videoName, String URI)
+        VideoData(String parentSubheading, String prefix, String videoName, String URI)
         {
+            this.ParentSubHeading   = parentSubheading;
             this.Prefix             = prefix;
             this.VideoName          = videoName;
             this.URI                = URI;
@@ -84,23 +87,8 @@ public class ResourceManager extends AndroidViewModel
 
         m_Videos = new ArrayList<>(10);
 
-        //Kap 3
-        m_Videos.add(new VideoData("Film", "SGFs Geofysikfilm", "5e7yiEa5CK4"));
-
-        //Kap 7
-        m_Videos.add(new VideoData("Instruktionsvideo", "Spetstrycksondering", "NbhLCYSIojk"));
-        m_Videos.add(new VideoData("Instruktionsvideo", "Jord-Bergsondering", "tbrlP-vvgT4"));
-        m_Videos.add(new VideoData("Instruktionsvideo", "Hejarsondering", "oqUgIU6Qn9c"));
-        m_Videos.add(new VideoData("Instruktionsvideo", "Viktsondering", "6_CEWBkyiD8"));
-        m_Videos.add(new VideoData("Instruktionsvideo", "Trycksondering", "eqso_AoABnM"));
-
-        //Kap 8
-        m_Videos.add(new VideoData("Instruktionsvideo", "Kolvprovtagning (I)", "3bUoIlOarsw"));
-        m_Videos.add(new VideoData("Instruktionsvideo", "Kolvprovtagning (II)", "Xa-gp1XGfDw"));
-        m_Videos.add(new VideoData("Instruktionsvideo", "Skruvprovtagning", "yonwBxVlLDk"));
-
-        //Kap 9
-        m_Videos.add(new VideoData("Instruktionsvideo", "Vingförsök", "aoTHVICJHTQ"));
+        if (!LoadVideos(getApplication().getAssets()))
+            return;
 
         if (!LoadDocumentsAsByteArray(getApplication().getAssets()))
             return;
@@ -119,6 +107,47 @@ public class ResourceManager extends AndroidViewModel
     protected void onCleared()
     {
         ClosePDDocuments();
+    }
+
+    private boolean LoadVideos(final AssetManager assetManager)
+    {
+        InputStream inputStream;
+        byte[] buffer;
+
+        try
+        {
+            inputStream = assetManager.open(VIDEOS_JSON_FILENAME);
+            int size = inputStream.available();
+            buffer = new byte[size];
+
+            inputStream.read(buffer);
+            inputStream.close();
+        }
+        catch (IOException e)
+        {
+            Log.e("SGF Fälthandbok", "Exception thrown while opening json video file...", e);
+            return false;
+        }
+
+        try
+        {
+            JSONObject jsonObject = new JSONObject(new String(buffer, StandardCharsets.UTF_8));
+            final JSONArray videos = jsonObject.getJSONArray("videos");
+
+            for (int v = 0; v < videos.length(); v++)
+            {
+                JSONObject video = videos.getJSONObject(v);
+
+                m_Videos.add(new VideoData(video.getString("parent_sub_heading"), video.getString("prefix"), video.getString("name"), video.getString("URI")));
+            }
+        }
+        catch (JSONException e)
+        {
+            Log.e("SGF Fälthandbok", "Exception thrown while parsing json video file...", e);
+            return false;
+        }
+
+        return true;
     }
 
     private boolean LoadDocumentsAsByteArray(final AssetManager assetManager)
@@ -254,56 +283,15 @@ public class ResourceManager extends AndroidViewModel
                     String subHeadingTitle = currentSubHeading.getTitle();
                     subHeadings.add(new ContentSubHeading(subHeadingTitle, ContentSubHeading.Type.SUBHEADING, null));
 
-                    if (subHeadingTitle.equals("3.2 Geofysiska metoder"))
+                    for (VideoData videoData : m_Videos)
                     {
-                        VideoData videoData = m_Videos.get(0);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
-                    }
-                    else if (subHeadingTitle.equals("7.2 Spetstrycksondering, CPT och CPTU"))
-                    {
-                        VideoData videoData = m_Videos.get(1);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
-                    }
-                    else if (subHeadingTitle.equals("7.3 Jord-Bergsondering"))
-                    {
-                        VideoData videoData = m_Videos.get(2);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
-                    }
-                    else if (subHeadingTitle.equals("7.4 Hejarsondering"))
-                    {
-                        VideoData videoData = m_Videos.get(3);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
-                    }
-                    else if (subHeadingTitle.equals("7.5 Viktsondering"))
-                    {
-                        VideoData videoData = m_Videos.get(4);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
-                    }
-                    else if (subHeadingTitle.equals("7.6 Mekanisk trycksondering"))
-                    {
-                        VideoData videoData = m_Videos.get(5);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
-                    }
-                    else if (subHeadingTitle.equals("8.3 Ostörd provtagning"))
-                    {
-                        //St I och St II
-                        VideoData videoData0 = m_Videos.get(6);
-                        subHeadings.add(new ContentSubHeading(videoData0.Prefix + ": " + videoData0.VideoName, ContentSubHeading.Type.VIDEO, videoData0.URI));
-                        VideoData videoData1 = m_Videos.get(7);
-                        subHeadings.add(new ContentSubHeading(videoData1.Prefix + ": " + videoData1.VideoName, ContentSubHeading.Type.VIDEO, videoData1.URI));
-                    }
-                    else if (subHeadingTitle.equals("8.4 Störd provtagning"))
-                    {
-                        VideoData videoData = m_Videos.get(8);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
-                    }
-                    else if (subHeadingTitle.equals("9.6 Fältvingförsök"))
-                    {
-                        VideoData videoData = m_Videos.get(9);
-                        subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
+                        if (subHeadingTitle.equals(videoData.ParentSubHeading))
+                        {
+                            subHeadings.add(new ContentSubHeading(videoData.Prefix + ": " + videoData.VideoName, ContentSubHeading.Type.VIDEO, videoData.URI));
+                        }
                     }
 
-                        currentSubHeading = currentSubHeading.getNextSibling();
+                    currentSubHeading = currentSubHeading.getNextSibling();
                 }
 
                 String headingTitle = currentHeading.getTitle();
